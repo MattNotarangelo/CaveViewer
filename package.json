@@ -1,0 +1,27 @@
+{
+  "name": "cave-survey-viewer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Web-native 3D viewer for cave survey data. Parses survey files entirely client-side.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "gen:example": "tsx scripts/make-example.ts"
+  },
+  "dependencies": {
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.42",
+    "@types/three": "^0.170.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.4"
+  }
+}

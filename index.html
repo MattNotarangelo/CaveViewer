@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cave Survey Viewer</title>
+    <meta
+      name="description"
+      content="A web-native 3D viewer for cave survey data. Runs entirely in your browser — nothing is uploaded."
+    />
+  </head>
+  <body>
+    <div id="app">
+      <div id="viewport"></div>
+
+      <div id="panel"></div>
+
+      <div id="toolbar">
+        <button id="btn-open" type="button">Open .3d file…</button>
+        <button id="btn-example" type="button">Load example cave</button>
+        <button id="btn-fit" type="button" title="Fit to view (F)">Fit view</button>
+        <input id="file-input" type="file" accept=".3d" hidden />
+      </div>
+
+      <div id="drop-overlay">
+        <div class="drop-message">Drop a Survex <code>.3d</code> file to open</div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
