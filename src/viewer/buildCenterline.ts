@@ -1,44 +1,67 @@
 /**
- * Build fat-line centreline geometry from a CaveModel, coloured by depth.
- * Splay shots (wall radials) are excluded — they are not part of the centreline.
+ * Build fat-line centreline geometry from a CaveModel, coloured by the selected
+ * mode, with per-leg-type visibility. "Cave" (normal) legs are always shown;
+ * splay/surface/duplicate legs are optional.
  */
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import type { CaveModel } from "../parser/index";
-import { depthColor } from "./colormap";
+import {
+  legColors,
+  prepareColorData,
+  type ColorMode,
+  type LegendSpec,
+  legendSpecFor,
+} from "./coloring";
 import { surveyToThree } from "./coords";
+
+export interface LegVisibility {
+  splay: boolean;
+  surface: boolean;
+  duplicate: boolean;
+}
+
+export interface CenterlineOptions {
+  colorMode: ColorMode;
+  show: LegVisibility;
+}
 
 export interface CenterlineGeometry {
   geometry: LineSegmentsGeometry;
-  /** Number of leg segments included. */
   segmentCount: number;
+  legend: LegendSpec;
 }
 
-export function buildCenterline(model: CaveModel): CenterlineGeometry {
-  const minZ = model.metadata.bounds.min[2];
-  const maxZ = model.metadata.bounds.max[2];
-  const span = maxZ - minZ || 1; // avoid divide-by-zero for flat caves
+export function buildCenterline(
+  model: CaveModel,
+  options: CenterlineOptions,
+): CenterlineGeometry {
+  const data = prepareColorData(model, options.colorMode);
+  const { show } = options;
 
   const positions: number[] = [];
   const colors: number[] = [];
   let segmentCount = 0;
 
   for (const leg of model.legs) {
-    if (leg.flags.splay) continue;
+    if (leg.flags.splay && !show.splay) continue;
+    if (leg.flags.surface && !show.surface) continue;
+    if (leg.flags.duplicate && !show.duplicate) continue;
+
     const a = model.stations[leg.from];
     const b = model.stations[leg.to];
-
     const [ax, ay, az] = surveyToThree(a.x, a.y, a.z);
     const [bx, by, bz] = surveyToThree(b.x, b.y, b.z);
     positions.push(ax, ay, az, bx, by, bz);
 
-    const ca = depthColor((a.z - minZ) / span);
-    const cb = depthColor((b.z - minZ) / span);
+    const [ca, cb] = legColors(data, model, leg);
     colors.push(ca[0], ca[1], ca[2], cb[0], cb[1], cb[2]);
     segmentCount++;
   }
 
   const geometry = new LineSegmentsGeometry();
-  geometry.setPositions(positions);
-  geometry.setColors(colors);
-  return { geometry, segmentCount };
+  if (segmentCount > 0) {
+    geometry.setPositions(positions);
+    geometry.setColors(colors);
+  }
+  return { geometry, segmentCount, legend: legendSpecFor(data) };
 }

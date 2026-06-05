@@ -138,6 +138,141 @@ body {
   background: rgba(30, 36, 48, 0.9);
 }
 
+#toolbar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+  border-color: var(--panel-border);
+  background: var(--panel-bg);
+}
+
+/* --- View controls panel (top-right, below the compass) --- */
+#controls-host {
+  position: absolute;
+  top: 84px;
+  right: 18px;
+  z-index: 10;
+}
+
+.controls {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  min-width: 190px;
+}
+
+.controls-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.controls button {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--panel-border);
+  color: var(--fg);
+  font-size: 12px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.controls button:hover {
+  border-color: var(--accent);
+}
+
+.controls-views {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+}
+
+.controls-views button {
+  padding: 5px 0;
+  text-align: center;
+}
+
+.controls-row > button {
+  width: 100%;
+}
+
+.controls-select {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  color: var(--fg-dim);
+}
+
+.controls-select select {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--panel-border);
+  color: var(--fg);
+  border-radius: 6px;
+  padding: 5px 6px;
+  font-size: 12px;
+}
+
+.controls-show {
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  color: var(--fg-dim);
+}
+
+.controls-show label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.controls-show-title {
+  width: 100%;
+  color: var(--fg-dim);
+}
+
+/* --- Scale bar (bottom-left) --- */
+.scalebar {
+  position: absolute;
+  bottom: 18px;
+  left: 16px;
+  z-index: 10;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.scalebar-bar {
+  height: 4px;
+  background: var(--fg);
+  border-radius: 2px;
+  min-width: 20px;
+}
+
+.scalebar-label {
+  font-size: 11px;
+  color: var(--fg-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.legend-note {
+  font-size: 12px;
+  color: var(--fg);
+  max-width: 120px;
+  text-align: center;
+}
+
 /* --- Depth legend (right) --- */
 .legend {
   position: absolute;

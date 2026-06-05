@@ -6,7 +6,7 @@
 
 export type RGB = readonly [number, number, number];
 
-function hslToRgb(h: number, s: number, l: number): RGB {
+export function hslToRgb(h: number, s: number, l: number): RGB {
   const c = (1 - Math.abs(2 * l - 1)) * s;
   const hp = h / 60;
   const x = c * (1 - Math.abs((hp % 2) - 1));

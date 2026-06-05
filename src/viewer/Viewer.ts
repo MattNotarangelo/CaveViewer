@@ -1,50 +1,76 @@
 /**
- * The Three.js cave viewer: scene, camera, renderer, orbit controls, and the
- * fat-line centreline. Consumes a CaveModel; knows nothing about file parsing.
+ * The Three.js cave viewer: scene, perspective/orthographic cameras, orbit
+ * controls, and the fat-line centreline. Consumes a CaveModel; knows nothing
+ * about file parsing.
  */
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import type { CaveModel } from "../parser/index";
-import { buildCenterline } from "./buildCenterline";
-import { boundsCenterThree, surveyToThree } from "./coords";
+import { buildCenterline, type LegVisibility } from "./buildCenterline";
+import type { ColorMode, LegendSpec } from "./coloring";
 
 /** What a plain left-drag does. See {@link Viewer.setLeftDragMode}. */
 export type LeftDragMode = "pan" | "orbit";
+export type Projection = "perspective" | "orthographic";
+/** Preset camera viewpoints. Compass letters name the side the camera sits on. */
+export type PresetView = "plan" | "N" | "S" | "E" | "W" | "iso";
+
+const WORLD_UP = new THREE.Vector3(0, 1, 0);
+const NORTH_UP = new THREE.Vector3(0, 0, -1); // for plan view, North points "up"
+
+// Camera direction (target -> camera) and up vector per preset view.
+const VIEW_DIRS: Record<PresetView, { dir: THREE.Vector3; up: THREE.Vector3 }> = {
+  plan: { dir: new THREE.Vector3(0, 1, 0), up: NORTH_UP },
+  N: { dir: new THREE.Vector3(0, 0, -1), up: WORLD_UP },
+  S: { dir: new THREE.Vector3(0, 0, 1), up: WORLD_UP },
+  E: { dir: new THREE.Vector3(1, 0, 0), up: WORLD_UP },
+  W: { dir: new THREE.Vector3(-1, 0, 0), up: WORLD_UP },
+  iso: { dir: new THREE.Vector3(0.6, 0.5, 1).normalize(), up: WORLD_UP },
+};
+
+const FOV = 55;
 
 export class Viewer {
   private readonly scene = new THREE.Scene();
-  private readonly camera: THREE.PerspectiveCamera;
+  private readonly perspCam: THREE.PerspectiveCamera;
+  private readonly orthoCam: THREE.OrthographicCamera;
+  private projection: Projection = "perspective";
   private readonly renderer: THREE.WebGLRenderer;
-  private readonly controls: OrbitControls;
+  private controls: OrbitControls;
   private readonly material: LineMaterial;
   private lines: LineSegments2 | null = null;
   private model: CaveModel | null = null;
+  private modelBox = new THREE.Box3();
   private leftDragMode: LeftDragMode = "pan";
+  private colorMode: ColorMode = "height";
+  private legVisibility: LegVisibility = { splay: false, surface: true, duplicate: true };
+  private legend: LegendSpec = { kind: "hidden" };
   private readonly resizeObserver: ResizeObserver;
   private disposed = false;
 
-  /** Called whenever the camera moves (for the north indicator). */
+  /** Fires whenever the camera moves (north indicator, scale bar). */
   onCameraChange?: () => void;
+  /** Fires when the legend should change (colour mode / model change). */
+  onLegendChange?: (spec: LegendSpec) => void;
 
   constructor(private readonly container: HTMLElement) {
     this.scene.background = new THREE.Color(0x10131a);
 
     const { clientWidth: w, clientHeight: h } = container;
-    this.camera = new THREE.PerspectiveCamera(55, w / Math.max(1, h), 0.1, 100_000);
-    this.camera.position.set(10, 10, 10);
+    const aspect = w / Math.max(1, h);
+    this.perspCam = new THREE.PerspectiveCamera(FOV, aspect, 0.1, 100_000);
+    this.perspCam.position.set(10, 10, 10);
+    this.orthoCam = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.1, 100_000);
+    this.orthoCam.position.set(10, 10, 10);
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(w, h);
     container.appendChild(this.renderer.domElement);
 
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.08;
-    this.setLeftDragMode("pan"); // default: Google Earth–style
-    this.controls.addEventListener("change", () => this.onCameraChange?.());
+    this.controls = this.makeControls();
 
     this.material = new LineMaterial({
       vertexColors: true,
@@ -61,49 +87,166 @@ export class Viewer {
     this.animate();
   }
 
+  // --- Model ---
+
   /** Replace the displayed cave with a new model and frame it. */
   setModel(model: CaveModel): void {
-    this.clearLines();
     this.model = model;
+    this.modelBox = this.computeBox(model);
+    this.rebuild();
+    this.setView("iso");
+  }
 
-    const { geometry, segmentCount } = buildCenterline(model);
-    if (segmentCount === 0) return; // nothing to draw (e.g. labels-only file)
+  setColorMode(mode: ColorMode): void {
+    this.colorMode = mode;
+    this.rebuild();
+  }
 
+  get colorModeId(): ColorMode {
+    return this.colorMode;
+  }
+
+  setLegVisibility(show: LegVisibility): void {
+    this.legVisibility = { ...show };
+    this.rebuild();
+  }
+
+  get legVisibilityState(): Readonly<LegVisibility> {
+    return this.legVisibility;
+  }
+
+  get currentLegend(): LegendSpec {
+    return this.legend;
+  }
+
+  private rebuild(): void {
+    if (!this.model) return;
+    this.clearLines();
+    const { geometry, segmentCount, legend } = buildCenterline(this.model, {
+      colorMode: this.colorMode,
+      show: this.legVisibility,
+    });
+    this.legend = legend;
+    this.onLegendChange?.(legend);
+    if (segmentCount === 0) {
+      geometry.dispose();
+      return;
+    }
     this.lines = new LineSegments2(geometry, this.material);
     this.lines.computeLineDistances();
     this.scene.add(this.lines);
-    this.fitToView();
   }
 
-  /** Frame the whole cave in view. */
+  // --- Camera framing ---
+
+  /** Frame the whole cave from the default 3D viewpoint. */
   fitToView(): void {
+    this.setView("iso");
+  }
+
+  /** Snap to a preset viewpoint and frame the cave. */
+  setView(view: PresetView): void {
     if (!this.model) return;
-    const { min, max } = this.model.metadata.bounds;
-    const [ax, ay, az] = surveyToThree(min[0], min[1], min[2]);
-    const [bx, by, bz] = surveyToThree(max[0], max[1], max[2]);
-    const box = new THREE.Box3(
-      new THREE.Vector3(Math.min(ax, bx), Math.min(ay, by), Math.min(az, bz)),
-      new THREE.Vector3(Math.max(ax, bx), Math.max(ay, by), Math.max(az, bz)),
-    );
-    const center = boundsCenterThree(min, max);
-    const target = new THREE.Vector3(center[0], center[1], center[2]);
-    const size = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z, 1);
+    const { dir, up } = VIEW_DIRS[view];
+    this.frame(dir, up);
+  }
 
-    const fov = (this.camera.fov * Math.PI) / 180;
-    const distance = (maxDim / 2 / Math.tan(fov / 2)) * 1.8;
-
-    // Look from an oblique angle (NE and slightly above) for a 3/4 view.
-    const dir = new THREE.Vector3(0.6, 0.5, 1).normalize();
-    this.camera.position.copy(target).addScaledVector(dir, distance);
-    this.camera.near = Math.max(0.01, distance / 1000);
-    this.camera.far = distance * 10 + maxDim * 4;
-    this.camera.updateProjectionMatrix();
-
+  setProjection(mode: Projection): void {
+    if (mode === this.projection) return;
+    const dir = this.currentDir();
+    const up = this.activeCam.up.clone();
+    const target = this.controls.target.clone();
+    this.projection = mode;
+    this.controls.dispose();
+    this.controls = this.makeControls();
     this.controls.target.copy(target);
+    if (this.model) this.frame(dir, up);
+    else this.controls.update();
+  }
+
+  get projectionMode(): Projection {
+    return this.projection;
+  }
+
+  /** Position the active camera along `dir` (target -> camera) and fit `modelBox`. */
+  private frame(dir: THREE.Vector3, up: THREE.Vector3): void {
+    const center = this.modelBox.getCenter(new THREE.Vector3());
+    const size = this.modelBox.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z, 1);
+    const ndir = dir.clone().normalize();
+    const cam = this.activeCam;
+    cam.up.copy(up);
+
+    if (cam instanceof THREE.PerspectiveCamera) {
+      const fov = (cam.fov * Math.PI) / 180;
+      const dist = (maxDim / 2 / Math.tan(fov / 2)) * 1.6;
+      cam.position.copy(center).addScaledVector(ndir, dist);
+      cam.near = Math.max(0.01, dist / 1000);
+      cam.far = dist * 4 + maxDim * 4;
+      cam.updateProjectionMatrix();
+    } else {
+      // Orthographic: tightly fit by projecting the box corners onto the image plane.
+      const camDir = ndir.clone().negate();
+      const right = new THREE.Vector3().crossVectors(camDir, up).normalize();
+      const trueUp = new THREE.Vector3().crossVectors(right, camDir).normalize();
+      let halfW = 1;
+      let halfH = 1;
+      const c = new THREE.Vector3();
+      for (let i = 0; i < 8; i++) {
+        c.set(
+          i & 1 ? this.modelBox.max.x : this.modelBox.min.x,
+          i & 2 ? this.modelBox.max.y : this.modelBox.min.y,
+          i & 4 ? this.modelBox.max.z : this.modelBox.min.z,
+        ).sub(center);
+        halfW = Math.max(halfW, Math.abs(c.dot(right)));
+        halfH = Math.max(halfH, Math.abs(c.dot(trueUp)));
+      }
+      const aspect = this.aspect();
+      halfW = Math.max(halfW, halfH * aspect) * 1.08;
+      halfH = Math.max(halfH, halfW / aspect) * 1.0;
+      const dist = maxDim * 2;
+      cam.left = -halfW;
+      cam.right = halfW;
+      cam.top = halfH;
+      cam.bottom = -halfH;
+      cam.near = 0.01;
+      cam.far = dist + maxDim * 2;
+      cam.zoom = 1;
+      cam.position.copy(center).addScaledVector(ndir, dist);
+      cam.updateProjectionMatrix();
+    }
+
+    this.controls.target.copy(center);
     this.controls.update();
     this.onCameraChange?.();
   }
+
+  /** World metres per CSS pixel at the orbit target — drives the scale bar. */
+  metresPerPixel(): number {
+    const h = this.container.clientHeight || 1;
+    const cam = this.activeCam;
+    if (cam instanceof THREE.PerspectiveCamera) {
+      const dist = cam.position.distanceTo(this.controls.target);
+      const visibleH = 2 * Math.tan((cam.fov * Math.PI) / 360) * dist;
+      return visibleH / h;
+    }
+    const visibleH = (cam.top - cam.bottom) / cam.zoom;
+    return visibleH / h;
+  }
+
+  // --- Snapshot ---
+
+  /** Render and download the current view as a PNG. */
+  snapshot(filename = "cave.png"): void {
+    this.renderer.render(this.scene, this.activeCam);
+    const url = this.renderer.domElement.toDataURL("image/png");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+  }
+
+  // --- Controls ---
 
   /**
    * Choose what a plain left-drag does:
@@ -134,14 +277,53 @@ export class Viewer {
     return this.leftDragMode;
   }
 
-  /** The camera, for overlays such as the north indicator. */
-  get camera3(): THREE.PerspectiveCamera {
-    return this.camera;
+  get camera3(): THREE.Camera {
+    return this.activeCam;
   }
 
-  /** The current orbit target (look-at point). */
   get target(): THREE.Vector3 {
     return this.controls.target;
+  }
+
+  // --- Internals ---
+
+  private get activeCam(): THREE.PerspectiveCamera | THREE.OrthographicCamera {
+    return this.projection === "perspective" ? this.perspCam : this.orthoCam;
+  }
+
+  private makeControls(): OrbitControls {
+    const controls = new OrbitControls(this.activeCam, this.renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    this.controls = controls; // setLeftDragMode reads this.controls
+    this.setLeftDragMode(this.leftDragMode);
+    controls.addEventListener("change", () => this.onCameraChange?.());
+    return controls;
+  }
+
+  private currentDir(): THREE.Vector3 {
+    const d = this.activeCam.position.clone().sub(this.controls.target);
+    if (d.lengthSq() < 1e-9) return VIEW_DIRS.iso.dir.clone();
+    return d.normalize();
+  }
+
+  private aspect(): number {
+    const { clientWidth: w, clientHeight: h } = this.container;
+    return w / Math.max(1, h);
+  }
+
+  private computeBox(model: CaveModel): THREE.Box3 {
+    const { min, max } = model.metadata.bounds;
+    const box = new THREE.Box3();
+    const v = new THREE.Vector3();
+    for (let i = 0; i < 8; i++) {
+      // surveyToThree(x, y, z) = (x, z, -y); expand over all 8 survey-space corners.
+      const x = i & 1 ? max[0] : min[0];
+      const y = i & 2 ? max[1] : min[1];
+      const z = i & 4 ? max[2] : min[2];
+      box.expandByPoint(v.set(x, z, -y));
+    }
+    return box;
   }
 
   private clearLines(): void {
@@ -155,17 +337,24 @@ export class Viewer {
   private handleResize(): void {
     const { clientWidth: w, clientHeight: h } = this.container;
     if (w === 0 || h === 0) return;
-    this.camera.aspect = w / h;
-    this.camera.updateProjectionMatrix();
+    const aspect = w / h;
+    this.perspCam.aspect = aspect;
+    this.perspCam.updateProjectionMatrix();
+    // Orthographic: preserve vertical extent, recompute horizontal from aspect.
+    const halfH = (this.orthoCam.top - this.orthoCam.bottom) / 2;
+    this.orthoCam.left = -halfH * aspect;
+    this.orthoCam.right = halfH * aspect;
+    this.orthoCam.updateProjectionMatrix();
     this.renderer.setSize(w, h);
     this.material.resolution.set(w, h);
+    this.onCameraChange?.();
   }
 
   private animate = (): void => {
     if (this.disposed) return;
     requestAnimationFrame(this.animate);
     this.controls.update();
-    this.renderer.render(this.scene, this.camera);
+    this.renderer.render(this.scene, this.activeCam);
   };
 
   dispose(): void {

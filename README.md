@@ -14,8 +14,9 @@ feature, not a limitation. The app deploys as a pure static site.
 | Phase | Scope | State |
 |-------|-------|-------|
 | **1** | Survex `.3d` (v8): centreline render, orbit/pan/zoom, depth colouring, drag-and-drop, fit-to-view, length/bounds readout, north indicator | ✅ done |
-| 2 | Compass `.plt`; colour modes (date, series); station labels; measurement tool | planned |
-| 3 | Therion `.lox` + wall meshes; LRUD passage tubes; clipping; depth fog | planned |
+| **1+** | Preset plan/elevation views, orthographic toggle, scale bar, colour modes (elevation / distance-from-entrance / gradient / survey / single), leg-type visibility toggles, PNG export _(ideas adopted from [CaveView.js](https://github.com/aardgoose/CaveView.js))_ | ✅ done |
+| 2 | Compass `.plt`; colour by date; station labels; measurement tool; survey-tree show/hide | planned |
+| 3 | Therion `.lox` + wall meshes; LRUD passage tubes; clipping plane / depth cursor; depth fog | planned |
 
 ## Architecture
 
@@ -137,9 +138,17 @@ choice is remembered):
 - **Pan** (default, Google Earth–style): left-drag pans · right-drag orbits (rotate + tilt) · scroll zooms
 - **Orbit** (3D-viewer / Aven-style): left-drag orbits · right-drag pans · scroll zooms
 
-Also:
+**View controls** (panel, top-right):
+
+- **Preset views**: Plan (looking down, North up) and N/S/E/W elevations, plus 3D. <kbd>P</kbd> = plan.
+- **Projection**: toggle Perspective ⇄ Orthographic (true-scale plan/elevation).
+- **Colour by**: elevation, distance-from-entrance, gradient (steepness), survey/series, or single colour. The legend adapts to the mode.
+- **Show**: toggle splay / surface / duplicate legs.
+
+**Toolbar** (bottom):
 
 - **Fit to view**: the "Fit view" button or press <kbd>F</kbd>
+- **Save PNG**: download the current view as an image.
 - **Open a file**: drag-and-drop a `.3d` anywhere, or use "Open .3d file…"
 
 ## License & attribution
