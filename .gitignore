@@ -4,4 +4,5 @@ dist
 .DS_Store
 .vite
 .playwright-mcp
-cave-render.png
+# Browser-verification screenshots live at repo root; docs/ images are kept.
+/*.png

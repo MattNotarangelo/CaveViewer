@@ -10,6 +10,9 @@ import type { CaveModel } from "../parser/index";
 import { buildCenterline } from "./buildCenterline";
 import { boundsCenterThree, surveyToThree } from "./coords";
 
+/** What a plain left-drag does. See {@link Viewer.setLeftDragMode}. */
+export type LeftDragMode = "pan" | "orbit";
+
 export class Viewer {
   private readonly scene = new THREE.Scene();
   private readonly camera: THREE.PerspectiveCamera;
@@ -18,6 +21,7 @@ export class Viewer {
   private readonly material: LineMaterial;
   private lines: LineSegments2 | null = null;
   private model: CaveModel | null = null;
+  private leftDragMode: LeftDragMode = "pan";
   private readonly resizeObserver: ResizeObserver;
   private disposed = false;
 
@@ -39,6 +43,7 @@ export class Viewer {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.08;
+    this.setLeftDragMode("pan"); // default: Google Earth–style
     this.controls.addEventListener("change", () => this.onCameraChange?.());
 
     this.material = new LineMaterial({
@@ -98,6 +103,35 @@ export class Viewer {
     this.controls.target.copy(target);
     this.controls.update();
     this.onCameraChange?.();
+  }
+
+  /**
+   * Choose what a plain left-drag does:
+   *  - "pan"   — Google Earth–style: left pans, right orbits (rotate + tilt).
+   *  - "orbit" — 3D-viewer / Aven-style: left orbits, right pans.
+   * In both, the middle button / scroll wheel zooms.
+   */
+  setLeftDragMode(mode: LeftDragMode): void {
+    this.leftDragMode = mode;
+    if (mode === "pan") {
+      this.controls.mouseButtons = {
+        LEFT: THREE.MOUSE.PAN,
+        MIDDLE: THREE.MOUSE.DOLLY,
+        RIGHT: THREE.MOUSE.ROTATE,
+      };
+      this.controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
+    } else {
+      this.controls.mouseButtons = {
+        LEFT: THREE.MOUSE.ROTATE,
+        MIDDLE: THREE.MOUSE.DOLLY,
+        RIGHT: THREE.MOUSE.PAN,
+      };
+      this.controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+    }
+  }
+
+  get leftDrag(): LeftDragMode {
+    return this.leftDragMode;
   }
 
   /** The camera, for overlays such as the north indicator. */

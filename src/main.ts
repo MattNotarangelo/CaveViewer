@@ -4,7 +4,7 @@
  */
 import "./style.css";
 import { parseCaveFile } from "./parser/index";
-import { Viewer } from "./viewer/Viewer";
+import { Viewer, type LeftDragMode } from "./viewer/Viewer";
 import { DepthLegend } from "./viewer/legend";
 import { NorthIndicator } from "./viewer/northIndicator";
 import { Hud } from "./ui/hud";
@@ -18,6 +18,7 @@ const fileInput = document.getElementById("file-input") as HTMLInputElement;
 const openBtn = document.getElementById("btn-open") as HTMLButtonElement;
 const exampleBtn = document.getElementById("btn-example") as HTMLButtonElement;
 const fitBtn = document.getElementById("btn-fit") as HTMLButtonElement;
+const controlsBtn = document.getElementById("btn-controls") as HTMLButtonElement;
 const panel = document.getElementById("panel") as HTMLElement;
 
 const viewer = new Viewer(viewport);
@@ -32,6 +33,25 @@ hud.showWelcome();
 legend.el.style.display = "none";
 
 viewer.onCameraChange = () => north.update(viewer.camera3, viewer.target);
+
+// Left-drag control scheme, persisted across sessions. Default: Google Earth–style.
+const DRAG_KEY = "cv.leftDrag";
+function applyDragMode(mode: LeftDragMode): void {
+  viewer.setLeftDragMode(mode);
+  // Label shows the CURRENT action of a plain left-drag.
+  controlsBtn.textContent = mode === "pan" ? "Drag: Pan" : "Drag: Orbit";
+  controlsBtn.title =
+    mode === "pan"
+      ? "Left-drag pans, right-drag orbits (Google Earth–style). Click to switch."
+      : "Left-drag orbits, right-drag pans (3D-viewer style). Click to switch.";
+}
+const savedMode: LeftDragMode = localStorage.getItem(DRAG_KEY) === "orbit" ? "orbit" : "pan";
+applyDragMode(savedMode);
+controlsBtn.addEventListener("click", () => {
+  const next: LeftDragMode = viewer.leftDrag === "pan" ? "orbit" : "pan";
+  applyDragMode(next);
+  localStorage.setItem(DRAG_KEY, next);
+});
 
 function loadFile(filename: string, buffer: ArrayBuffer): void {
   try {

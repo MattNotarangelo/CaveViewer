@@ -131,7 +131,14 @@ any path.
 
 ## Controls
 
-- **Orbit**: left-drag · **Pan**: right-drag · **Zoom**: scroll
+Two drag schemes, toggled by the **"Drag: Pan / Orbit"** toolbar button (your
+choice is remembered):
+
+- **Pan** (default, Google Earth–style): left-drag pans · right-drag orbits (rotate + tilt) · scroll zooms
+- **Orbit** (3D-viewer / Aven-style): left-drag orbits · right-drag pans · scroll zooms
+
+Also:
+
 - **Fit to view**: the "Fit view" button or press <kbd>F</kbd>
 - **Open a file**: drag-and-drop a `.3d` anywhere, or use "Open .3d file…"
 
