@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "description": "Web-native 3D viewer for cave survey data. Parses survey files entirely client-side.",
+  "license": "MIT",
+  "author": "Matt Notarangelo",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

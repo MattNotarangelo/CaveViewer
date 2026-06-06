@@ -157,8 +157,15 @@ choice is remembered):
 - **Save PNG**: download the current view as an image.
 - **Open a file**: drag-and-drop a `.3d` anywhere, or use "Open .3d file…"
 
-## License & attribution
+## License
 
-`test/fixtures/survex/` contains small reference test vectors from the
-[Survex](https://survex.com/) project (GPL v2+), used solely to validate
-interoperability. See that directory's `PROVENANCE.md`.
+This project is licensed under the **MIT License** (`SPDX-License-Identifier: MIT`)
+— see [`LICENSE`](./LICENSE). The source code and the built static site (`dist/`)
+are MIT and contain no third-party copyleft material.
+
+**Test vectors:** `test/fixtures/survex/` and `test/fixtures/compass/` vendor small
+reference test vectors from the [Survex](https://survex.com/) project (GPL v2+),
+used **only** by the test suite to validate parser interoperability against genuine
+reference-tool output. They are not imported by the app and are not in the build
+output (mere aggregation, not a derivative work). See each directory's
+`PROVENANCE.md` and the top-level [`NOTICE`](./NOTICE) for details.

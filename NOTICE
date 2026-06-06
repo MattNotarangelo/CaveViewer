@@ -1,0 +1,31 @@
+Cave Survey Viewer
+Copyright (c) 2026 Matt Notarangelo
+Licensed under the MIT License (see LICENSE).
+
+This product's source code and its built/distributed output (the `dist/`
+static site) are MIT-licensed and contain no third-party copyleft material.
+
+----------------------------------------------------------------------
+Third-party test vectors (NOT part of the distributed product)
+----------------------------------------------------------------------
+
+The repository vendors a small number of reference test vectors from the
+Survex project (https://survex.com/), which is licensed under the GNU GPL
+v2 or later. These files are used ONLY by the test suite to validate parser
+interoperability against genuine reference-tool output. They are not imported
+by the application and are not included in the build output.
+
+  - test/fixtures/survex/   (Survex .3d files + dump3d output)
+  - test/fixtures/compass/  (Compass .plt files + Survex's decode of them)
+
+See the PROVENANCE.md file in each directory for exact sources and rationale.
+These GPL files are aggregated with, not combined into, the MIT-licensed
+code; the application is not a derivative work of them.
+
+----------------------------------------------------------------------
+Runtime dependencies
+----------------------------------------------------------------------
+
+  - three (3D rendering) — MIT License
+
+Build/test tooling (Vite, TypeScript, Vitest, tsx) is MIT-licensed.
