@@ -44,6 +44,9 @@ export class Viewer {
   private model: CaveModel | null = null;
   private modelBox = new THREE.Box3();
   private leftDragMode: LeftDragMode = "pan";
+  private shiftActive = false;
+  private dragging = false;
+  private lastPointer: { pointerId: number; clientX: number; clientY: number } | null = null;
   private colorMode: ColorMode = "height";
   private legVisibility: LegVisibility = { splay: false, surface: true, duplicate: true };
   private legend: LegendSpec = { kind: "hidden" };
@@ -83,6 +86,15 @@ export class Viewer {
 
     this.resizeObserver = new ResizeObserver(() => this.handleResize());
     this.resizeObserver.observe(container);
+
+    // Track drags + the Shift modifier (swaps left-drag pan<->orbit, live).
+    const dom = this.renderer.domElement;
+    dom.addEventListener("pointerdown", this.onPointerDown);
+    dom.addEventListener("pointermove", this.onPointerMove);
+    window.addEventListener("pointerup", this.onPointerUp);
+    window.addEventListener("pointercancel", this.onPointerUp);
+    window.addEventListener("keydown", this.onShiftChange);
+    window.addEventListener("keyup", this.onShiftChange);
 
     this.animate();
   }
@@ -252,26 +264,67 @@ export class Viewer {
    * Choose what a plain left-drag does:
    *  - "pan"   — Google Earth–style: left pans, right orbits (rotate + tilt).
    *  - "orbit" — 3D-viewer / Aven-style: left orbits, right pans.
-   * In both, the middle button / scroll wheel zooms.
+   * In both, the middle button / scroll wheel zooms, and holding Shift swaps the
+   * left-drag action (pan<->orbit) — live, even mid-drag (see {@link applyButtons}).
    */
   setLeftDragMode(mode: LeftDragMode): void {
     this.leftDragMode = mode;
-    if (mode === "pan") {
-      this.controls.mouseButtons = {
-        LEFT: THREE.MOUSE.PAN,
-        MIDDLE: THREE.MOUSE.DOLLY,
-        RIGHT: THREE.MOUSE.ROTATE,
-      };
-      this.controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
-    } else {
-      this.controls.mouseButtons = {
-        LEFT: THREE.MOUSE.ROTATE,
-        MIDDLE: THREE.MOUSE.DOLLY,
-        RIGHT: THREE.MOUSE.PAN,
-      };
-      this.controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
-    }
+    this.applyButtons();
   }
+
+  /**
+   * Apply the effective mouse-button mapping. Shift inverts the left-drag action
+   * so it can act as a temporary "do the other thing" modifier. OrbitControls
+   * only reads the mapping when a gesture starts, so {@link onShiftChange}
+   * restarts an in-progress drag to make the swap take effect immediately.
+   */
+  private applyButtons(): void {
+    const effective: LeftDragMode =
+      this.shiftActive ? (this.leftDragMode === "pan" ? "orbit" : "pan") : this.leftDragMode;
+    this.controls.mouseButtons =
+      effective === "pan"
+        ? { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }
+        : { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+    // Touch has no keyboard modifier, so follow the base mode.
+    this.controls.touches =
+      this.leftDragMode === "pan"
+        ? { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE }
+        : { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+  }
+
+  private onShiftChange = (e: KeyboardEvent): void => {
+    if (e.shiftKey === this.shiftActive) return;
+    this.shiftActive = e.shiftKey;
+    this.applyButtons();
+    // Make the swap live: if a left-drag is in progress, end and immediately
+    // restart it so OrbitControls re-reads the new button mapping.
+    if (this.dragging && this.lastPointer) {
+      const dom = this.renderer.domElement;
+      const { pointerId, clientX, clientY } = this.lastPointer;
+      const base = { pointerId, clientX, clientY, pointerType: "mouse", bubbles: true };
+      dom.dispatchEvent(new PointerEvent("pointerup", { ...base, button: 0, buttons: 0 }));
+      dom.dispatchEvent(new PointerEvent("pointerdown", { ...base, button: 0, buttons: 1 }));
+    }
+  };
+
+  // Track left-button drags so a Shift change can restart the in-progress gesture.
+  private onPointerDown = (e: PointerEvent): void => {
+    if (e.button === 0) {
+      this.dragging = true;
+      this.lastPointer = { pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY };
+    }
+  };
+
+  private onPointerMove = (e: PointerEvent): void => {
+    if (this.dragging) {
+      this.lastPointer = { pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY };
+    }
+  };
+
+  private onPointerUp = (): void => {
+    this.dragging = false;
+    this.lastPointer = null;
+  };
 
   get leftDrag(): LeftDragMode {
     return this.leftDragMode;
@@ -360,6 +413,13 @@ export class Viewer {
   dispose(): void {
     this.disposed = true;
     this.resizeObserver.disconnect();
+    const dom = this.renderer.domElement;
+    dom.removeEventListener("pointerdown", this.onPointerDown);
+    dom.removeEventListener("pointermove", this.onPointerMove);
+    window.removeEventListener("pointerup", this.onPointerUp);
+    window.removeEventListener("pointercancel", this.onPointerUp);
+    window.removeEventListener("keydown", this.onShiftChange);
+    window.removeEventListener("keyup", this.onShiftChange);
     this.clearLines();
     this.material.dispose();
     this.controls.dispose();
