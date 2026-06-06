@@ -93,8 +93,11 @@ npm test             # parser test suite (vitest)
 npm run typecheck    # tsc --noEmit
 npm run build        # type-check then produce static site in dist/
 npm run preview      # serve the production build locally
-npm run gen:example  # regenerate public/example-cave.3d
 ```
+
+The "Load example cave" button loads `public/example-cave.3d` — a real Survex
+v8 survey (a genuine cave, with its name removed from the title so it isn't
+identifiable) included to demonstrate the viewer on real-world data.
 
 ### Testing — parser correctness is the whole ballgame
 

@@ -12,8 +12,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
-    "gen:example": "tsx scripts/make-example.ts"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "three": "^0.170.0"
@@ -21,7 +20,6 @@
   "devDependencies": {
     "@types/node": "^20.19.42",
     "@types/three": "^0.170.0",
-    "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vite": "^5.4.10",
     "vitest": "^2.1.4"
