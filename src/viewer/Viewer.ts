@@ -182,6 +182,7 @@ export class Viewer {
 
   /** Position the active camera along `dir` (target -> camera) and fit `modelBox`. */
   private frame(dir: THREE.Vector3, up: THREE.Vector3): void {
+    if (this.aspect() <= 0) return; // container not laid out yet; avoid NaN frustum
     const center = this.modelBox.getCenter(new THREE.Vector3());
     const size = this.modelBox.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z, 1);
@@ -264,44 +265,47 @@ export class Viewer {
    * Choose what a plain left-drag does:
    *  - "pan"   — Google Earth–style: left pans, right orbits (rotate + tilt).
    *  - "orbit" — 3D-viewer / Aven-style: left orbits, right pans.
-   * In both, the middle button / scroll wheel zooms, and holding Shift swaps the
-   * left-drag action (pan<->orbit) — live, even mid-drag (see {@link applyButtons}).
+   * In both, the middle button / scroll wheel zooms. OrbitControls natively
+   * swaps the left-drag action (pan<->orbit) while Shift is held; we leave the
+   * button mapping alone so we don't fight that, and {@link onShiftChange} just
+   * makes the swap apply mid-drag too.
    */
   setLeftDragMode(mode: LeftDragMode): void {
     this.leftDragMode = mode;
-    this.applyButtons();
+    if (mode === "pan") {
+      this.controls.mouseButtons = {
+        LEFT: THREE.MOUSE.PAN,
+        MIDDLE: THREE.MOUSE.DOLLY,
+        RIGHT: THREE.MOUSE.ROTATE,
+      };
+      this.controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
+    } else {
+      this.controls.mouseButtons = {
+        LEFT: THREE.MOUSE.ROTATE,
+        MIDDLE: THREE.MOUSE.DOLLY,
+        RIGHT: THREE.MOUSE.PAN,
+      };
+      this.controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+    }
   }
 
-  /**
-   * Apply the effective mouse-button mapping. Shift inverts the left-drag action
-   * so it can act as a temporary "do the other thing" modifier. OrbitControls
-   * only reads the mapping when a gesture starts, so {@link onShiftChange}
-   * restarts an in-progress drag to make the swap take effect immediately.
-   */
-  private applyButtons(): void {
-    const effective: LeftDragMode =
-      this.shiftActive ? (this.leftDragMode === "pan" ? "orbit" : "pan") : this.leftDragMode;
-    this.controls.mouseButtons =
-      effective === "pan"
-        ? { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }
-        : { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
-    // Touch has no keyboard modifier, so follow the base mode.
-    this.controls.touches =
-      this.leftDragMode === "pan"
-        ? { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE }
-        : { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
-  }
-
+  // OrbitControls only reads the Shift key when a gesture starts. To make the
+  // native pan<->orbit swap apply *mid-drag*, restart the in-progress gesture
+  // (carrying the new Shift state) so OrbitControls re-evaluates the action.
   private onShiftChange = (e: KeyboardEvent): void => {
     if (e.shiftKey === this.shiftActive) return;
     this.shiftActive = e.shiftKey;
-    this.applyButtons();
-    // Make the swap live: if a left-drag is in progress, end and immediately
-    // restart it so OrbitControls re-reads the new button mapping.
     if (this.dragging && this.lastPointer) {
       const dom = this.renderer.domElement;
       const { pointerId, clientX, clientY } = this.lastPointer;
-      const base = { pointerId, clientX, clientY, pointerType: "mouse", bubbles: true };
+      const base = {
+        pointerId,
+        clientX,
+        clientY,
+        pointerType: "mouse",
+        bubbles: true,
+        shiftKey: this.shiftActive,
+      };
       dom.dispatchEvent(new PointerEvent("pointerup", { ...base, button: 0, buttons: 0 }));
       dom.dispatchEvent(new PointerEvent("pointerdown", { ...base, button: 0, buttons: 1 }));
     }
