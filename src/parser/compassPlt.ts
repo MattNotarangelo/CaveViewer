@@ -205,7 +205,7 @@ function parseDate(rest: string): DateRange | undefined {
   const month = Number(dm[1]);
   const day = Number(dm[2]);
   const year = Number(dm[3]);
-  if (!year) return undefined;
+  if (!year || month < 1 || month > 12 || day < 1 || day > 31) return undefined;
   const iso = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   return { from: iso, to: iso };
 }

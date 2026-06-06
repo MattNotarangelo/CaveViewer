@@ -140,7 +140,9 @@ export function parseSurvex3d(buffer: ArrayBuffer): CaveModel {
 
   const versionLine = cur.line();
   if (!/^v\d+$/.test(versionLine)) {
-    throw new Survex3dParseError(`Unrecognised .3d version line "${versionLine}"`);
+    throw new Survex3dParseError(
+      `Unrecognised .3d version line "${versionLine.slice(0, 20)}"`,
+    );
   }
   const version = Number(versionLine.slice(1));
   if (version !== 8) {
@@ -260,14 +262,17 @@ export function parseSurvex3d(buffer: ArrayBuffer): CaveModel {
     const z = cur.i32();
     const id = stationAt(b, x, y, z);
     const st = b.stations[id];
-    st.label = name;
-    st.flags.surface = (flagBits & 0x01) !== 0;
-    st.flags.underground = (flagBits & 0x02) !== 0;
-    st.flags.entrance = (flagBits & 0x04) !== 0;
-    st.flags.exported = (flagBits & 0x08) !== 0;
-    st.flags.fixed = (flagBits & 0x10) !== 0;
-    st.flags.anonymous = (flagBits & 0x20) !== 0;
-    st.flags.wall = (flagBits & 0x40) !== 0;
+    // A coordinate can be named by more than one LABEL (a junction exported
+    // under multiple survey paths). Keep the most recent non-empty name, but
+    // OR-accumulate flags so an earlier `entrance`/`fixed` mark isn't lost.
+    if (name) st.label = name;
+    st.flags.surface ||= (flagBits & 0x01) !== 0;
+    st.flags.underground ||= (flagBits & 0x02) !== 0;
+    st.flags.entrance ||= (flagBits & 0x04) !== 0;
+    st.flags.exported ||= (flagBits & 0x08) !== 0;
+    st.flags.fixed ||= (flagBits & 0x10) !== 0;
+    st.flags.anonymous ||= (flagBits & 0x20) !== 0;
+    st.flags.wall ||= (flagBits & 0x40) !== 0;
     if (name) b.byLabel.set(name, id);
   }
 

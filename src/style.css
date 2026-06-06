@@ -110,6 +110,18 @@ body {
   padding-top: 10px;
 }
 
+.hud-repo {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.hud-repo:hover {
+  text-decoration: underline;
+}
+
 /* --- Toolbar (bottom-center) --- */
 #toolbar {
   position: absolute;

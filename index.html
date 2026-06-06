@@ -3,6 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Defense-in-depth: the app's only threat surface is file-derived content
+         rendered into the DOM. A strict script-src blocks any injected script
+         even if escaping is ever incomplete. No third-party/network resources. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'"
+    />
     <title>Cave Survey Viewer</title>
     <meta
       name="description"

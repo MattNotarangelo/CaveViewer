@@ -158,4 +158,17 @@ describe("Survex .3d encoder round-trip", () => {
     const v7 = new TextEncoder().encode("Survex 3D Image File\nv7\nt\n@0\n");
     expect(() => parse(v7)).toThrow(/version v7/);
   });
+
+  it("throws cleanly on a truncated file instead of reading out of bounds", () => {
+    const full = encode3d({
+      items: [
+        { t: "label", x: 0, y: 0, z: 0, name: "a", underground: true },
+        { t: "move", x: 0, y: 0, z: 0 },
+        { t: "line", x: 1000, y: 0, z: 0, survey: "s" },
+      ],
+    });
+    // Cut off mid-item (after the header, partway through the data).
+    const truncated = full.slice(0, full.length - 6);
+    expect(() => parse(truncated)).toThrow(); // ByteCursor bounds check fires
+  });
 });

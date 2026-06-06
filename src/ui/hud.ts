@@ -3,6 +3,8 @@
  */
 import { caveStats, type CaveModel } from "../parser/index";
 
+const REPO_URL = "https://github.com/MattNotarangelo/CaveViewer";
+
 function formatLength(m: number): string {
   return m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${m.toFixed(1)} m`;
 }
@@ -18,7 +20,9 @@ export class Hud {
       <h1 class="hud-title">Cave Survey Viewer</h1>
       <div class="hud-body"></div>
       <p class="hud-privacy">🔒 Everything runs in your browser. Your survey files
-      never leave this machine — nothing is uploaded.</p>`;
+      never leave this machine — nothing is uploaded.</p>
+      <a class="hud-repo" href="${REPO_URL}" target="_blank" rel="noopener noreferrer">
+        View source on GitHub ↗</a>`;
     this.body = this.el.querySelector(".hud-body") as HTMLElement;
   }
 
@@ -63,5 +67,7 @@ function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
 }
