@@ -163,6 +163,13 @@ body {
   top: 84px;
   right: 18px;
   z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  /* Stack controls + legend; scroll instead of overlapping on short windows. */
+  max-height: calc(100vh - 84px - 80px);
+  overflow-y: auto;
 }
 
 .controls {
@@ -287,16 +294,12 @@ body {
 
 /* --- Depth legend (right) --- */
 .legend {
-  position: absolute;
-  top: 50%;
-  right: 18px;
-  transform: translateY(-50%);
+  /* Flows below the controls panel inside #controls-host (no overlap). */
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
   border-radius: 10px;
   padding: 10px 12px;
   backdrop-filter: blur(8px);
-  z-index: 10;
 }
 
 .legend-title {

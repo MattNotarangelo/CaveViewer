@@ -23,11 +23,28 @@ export function hslToRgb(h: number, s: number, l: number): RGB {
   return [r + m, g + m, b + m];
 }
 
+// Depth ramp control points, low (0) -> high (1). A hand-picked blue -> cyan ->
+// green -> yellow -> red ramp: caving convention (deep = blue, high = red) but
+// interpolated in RGB so it stays perceptually smooth and never strays into the
+// violet/purple the raw HSL hue wheel produces near pure blue.
+const DEPTH_RAMP: ReadonlyArray<RGB> = [
+  [0.16, 0.32, 0.92], // blue
+  [0.13, 0.72, 0.95], // cyan
+  [0.27, 0.78, 0.30], // green
+  [0.95, 0.83, 0.20], // yellow
+  [0.88, 0.20, 0.16], // red
+];
+
 /** Map normalized height t in [0,1] to an RGB triple in [0,1]. */
 export function depthColor(t: number): RGB {
   const clamped = Math.max(0, Math.min(1, t));
-  // Hue 240° (blue, low) -> 0° (red, high).
-  return hslToRgb(240 * (1 - clamped), 0.85, 0.5);
+  const n = DEPTH_RAMP.length - 1;
+  const x = clamped * n;
+  const i = Math.min(Math.floor(x), n - 1);
+  const f = x - i;
+  const a = DEPTH_RAMP[i];
+  const b = DEPTH_RAMP[i + 1];
+  return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
 }
 
 /** CSS `rgb(...)` string for a normalized height, for DOM legends. */

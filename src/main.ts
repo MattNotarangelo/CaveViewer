@@ -32,7 +32,6 @@ const north = new NorthIndicator();
 const scaleBar = new ScaleBar();
 
 panel.appendChild(hud.el);
-app.appendChild(legend.el);
 app.appendChild(north.el);
 app.appendChild(scaleBar.el);
 hud.showWelcome();
@@ -52,6 +51,7 @@ const controls = new ControlsPanel(
   },
 );
 controlsHost.appendChild(controls.el);
+controlsHost.appendChild(legend.el); // stacks below the controls (no overlap)
 controlsHost.style.display = "none";
 
 viewer.onCameraChange = () => {
