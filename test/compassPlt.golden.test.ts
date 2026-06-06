@@ -117,6 +117,42 @@ describe("Compass .plt parser — golden test vs survex decode (multisurvey)", (
   });
 });
 
+describe("Compass .plt parser — anonymous / Therion 'None' splay shots", () => {
+  // Therion exports wall/splay shots to a placeholder station named "None".
+  // Each must stay a distinct point (not collapse), be a splay, and carry no LRUD.
+  const plt = [
+    "NX D 1 1 1 CTest",
+    "M 0 0 0 S1 P -9 -9 -9 -9",
+    "D 0 100 0 S2 P 1 2 3 4", // real centreline leg, 100 ft east, with LRUD
+    "M 0 100 0 S2 P 1 2 3 4",
+    "D 0 50 30 SNone P -9 -9 -9 -9", // splay to a wall point
+    "M 0 100 0 S2 P 1 2 3 4",
+    "D 0 60 -20 SNone P -9 -9 -9 -9", // splay to a different wall point
+    "",
+  ].join("\n");
+  const bytes = new TextEncoder().encode(plt);
+  const model = parseCompassPlt(
+    bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer,
+  );
+
+  it("keeps each 'None' point distinct instead of collapsing them", () => {
+    expect(model.stations).toHaveLength(4); // S1, S2, two distinct wall points
+    expect(model.stations.filter((s) => s.flags.anonymous)).toHaveLength(2);
+  });
+
+  it("flags shots to 'None' as splays but not the named centreline leg", () => {
+    expect(model.legs).toHaveLength(3);
+    expect(model.legs.filter((l) => l.flags.splay)).toHaveLength(2);
+    const named = model.legs.find((l) => !l.flags.splay)!;
+    expect(model.stations[named.to].label).toBe("X 2");
+  });
+
+  it("skips all-omitted (-9) LRUD but keeps real ones", () => {
+    expect(model.lrud).toHaveLength(1);
+    expect(model.stations[model.lrud![0].station].label).toBe("X 2");
+  });
+});
+
 describe("Compass .plt parser — robustness across real fixtures", () => {
   // multisection: multiple sections; pre1970: dates before the Unix epoch.
   for (const name of ["multisurvey.plt", "multisection.plt", "pre1970.plt"]) {

@@ -47,8 +47,12 @@ interface Builder {
   legs: Leg[];
   lrud: Lrud[];
   byLabel: Map<string, number>;
+  byCoord: Map<string, number>; // for anonymous (unnamed / "None") points
   haveLrud: Set<number>;
 }
+
+// Therion exports wall/splay shots to a placeholder station named "None".
+const ANON_NAME = "None";
 
 export function parseCompassPlt(buffer: ArrayBuffer): CaveModel {
   const text = utf8.decode(new Uint8Array(buffer));
@@ -59,6 +63,7 @@ export function parseCompassPlt(buffer: ArrayBuffer): CaveModel {
     legs: [],
     lrud: [],
     byLabel: new Map(),
+    byCoord: new Map(),
     haveLrud: new Set(),
   };
 
@@ -75,25 +80,28 @@ export function parseCompassPlt(buffer: ArrayBuffer): CaveModel {
     if (cmd === "M" || cmd === "D") {
       const m = MD_RE.exec(line);
       if (!m) continue; // tolerate malformed coordinate lines
-      const north = parseFloat(m[1]);
-      const east = parseFloat(m[2]);
-      const up = parseFloat(m[3]);
       const name = m[4];
       const tail = m[5];
-
-      const id = stationFor(b, labelOf(survey, name), {
-        x: east * METRES_PER_FOOT,
-        y: north * METRES_PER_FOOT,
-        z: up * METRES_PER_FOOT,
-      });
+      const coord = {
+        x: parseFloat(m[2]) * METRES_PER_FOOT, // East
+        y: parseFloat(m[1]) * METRES_PER_FOOT, // North
+        z: parseFloat(m[3]) * METRES_PER_FOOT, // Up
+      };
+      // Unnamed / "None" stations are anonymous wall/splay points. Key them by
+      // coordinate (not name) so they stay distinct instead of collapsing into a
+      // single station; a shot to one is a splay.
+      const anon = name === ANON_NAME || name === "";
+      const id = anon ? anonStationFor(b, coord) : stationFor(b, labelOf(survey, name), coord);
 
       const flags = parseFlags(tail);
       if (cmd === "D" && current !== null) {
-        const leg: Leg = { from: current, to: id, flags: legFlags(flags) };
+        const lf = legFlags(flags);
+        if (anon) lf.splay = true;
+        const leg: Leg = { from: current, to: id, flags: lf };
         if (survey) leg.survey = survey;
         if (surveyDate) leg.date = surveyDate;
         b.legs.push(leg);
-        if (flags.splay) b.stations[id].flags.wall = true;
+        if (lf.splay) b.stations[id].flags.wall = true;
       }
       current = id;
 
@@ -154,6 +162,20 @@ function stationFor(
   return id;
 }
 
+/** Get or create an anonymous station, keyed by coordinate. */
+function anonStationFor(b: Builder, coord: { x: number; y: number; z: number }): number {
+  const key = `${coord.x.toFixed(3)},${coord.y.toFixed(3)},${coord.z.toFixed(3)}`;
+  const existing = b.byCoord.get(key);
+  if (existing !== undefined) return existing;
+  const id = b.stations.length;
+  const flags = emptyStationFlags();
+  flags.underground = true;
+  flags.anonymous = true;
+  b.stations.push({ id, label: "", x: coord.x, y: coord.y, z: coord.z, flags });
+  b.byCoord.set(key, id);
+  return id;
+}
+
 interface ShotFlags {
   splay: boolean;
   duplicate: boolean;
@@ -188,14 +210,12 @@ function addLrud(b: Builder, station: number, tail: string): void {
     const v = parseFloat(s);
     return v < 0 || v > 900 ? null : v * METRES_PER_FOOT;
   };
-  b.lrud.push({
-    station,
-    l: dim(pm[1]),
-    r: dim(pm[2]),
-    u: dim(pm[3]),
-    d: dim(pm[4]),
-    lastInPassage: false,
-  });
+  const l = dim(pm[1]);
+  const r = dim(pm[2]);
+  const u = dim(pm[3]);
+  const d = dim(pm[4]);
+  if (l === null && r === null && u === null && d === null) return; // all omitted (-9)
+  b.lrud.push({ station, l, r, u, d, lastInPassage: false });
   b.haveLrud.add(station);
 }
 
