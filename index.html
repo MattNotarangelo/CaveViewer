@@ -18,7 +18,7 @@
       <div id="controls-host"></div>
 
       <div id="toolbar">
-        <button id="btn-open" type="button">Open .3d file…</button>
+        <button id="btn-open" type="button">Open file…</button>
         <button id="btn-example" type="button">Load example cave</button>
         <button id="btn-fit" type="button" title="Fit to view (F)">Fit view</button>
         <button id="btn-snapshot" type="button" title="Download a PNG of the current view">Save PNG</button>
@@ -27,11 +27,11 @@
           type="button"
           title="Toggle what left-drag does"
         >Drag: Pan</button>
-        <input id="file-input" type="file" accept=".3d" hidden />
+        <input id="file-input" type="file" accept=".3d,.plt" hidden />
       </div>
 
       <div id="drop-overlay">
-        <div class="drop-message">Drop a Survex <code>.3d</code> file to open</div>
+        <div class="drop-message">Drop a Survex <code>.3d</code> or Compass <code>.plt</code> file to open</div>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

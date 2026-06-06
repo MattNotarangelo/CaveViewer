@@ -15,7 +15,8 @@ feature, not a limitation. The app deploys as a pure static site.
 |-------|-------|-------|
 | **1** | Survex `.3d` (v8): centreline render, orbit/pan/zoom, depth colouring, drag-and-drop, fit-to-view, length/bounds readout, north indicator | ✅ done |
 | **1+** | Preset plan/elevation views, orthographic toggle, scale bar, colour modes (elevation / distance-from-entrance / gradient / survey / single), leg-type visibility toggles, PNG export _(ideas adopted from [CaveView.js](https://github.com/aardgoose/CaveView.js))_ | ✅ done |
-| 2 | Compass `.plt`; colour by date; station labels; measurement tool; survey-tree show/hide | planned |
+| **2** | **Compass `.plt`** (binary-equivalent processed coordinates, LRUD, splays, multi-survey) | ✅ done |
+| 2 | Colour by date; station labels; measurement tool; survey-tree show/hide | planned |
 | 3 | Therion `.lox` + wall meshes; LRUD passage tubes; clipping plane / depth cursor; depth fog | planned |
 
 ## Architecture
@@ -72,12 +73,14 @@ The parser stays axis-faithful; all axis remapping for rendering lives in
 | Format | Type | Spec / reference |
 |--------|------|------------------|
 | Survex `.3d` (v8) | binary | [Official 3d format spec](https://survex.com/docs/3dformat.htm); cross-checked against Survex's reference reader [`src/img.c`](https://github.com/ojwb/survex/blob/master/src/img.c) (`img_read_item_new`, `read_v8label`) |
-| Compass `.plt` | text | _planned_ |
+| Compass `.plt` | text | Cross-checked against Survex's reference Compass reader [`src/img.c`](https://github.com/ojwb/survex/blob/master/src/img.c); coordinates are North/East/Up in feet → metres |
 | Therion `.lox` | binary | _planned_ |
 
 The `.3d` parser implements the v8 layout exactly — byte offsets are taken from
 the spec and the reference C reader, not guessed. Files older than v8 are rejected
 with a clear message (re-save with a recent `cavern`, which writes v8 by default).
+The `.plt` parser reads Compass's processed plot coordinates, LRUD passage data,
+splay/duplicate/surface shot flags, and multi-survey sections.
 
 ## Develop, test, build
 
@@ -105,6 +108,9 @@ A plausible render is **not** proof the parser is correct; the numbers must matc
   exercises paths the golden fixture lacks — labelled LINEs, splay/surface/duplicate
   flags, XSECT (narrow + wide), anonymous stations, CRS/separator headers, ERROR and
   DATE records, the `(del=0, add=0)` label escape, and error handling.
+- **Compass golden test** (`test/compassPlt.golden.test.ts`): parses a real `.plt`
+  (`multisurvey.plt`) and asserts stations, legs (incl. splays), and LRUD against
+  Survex's own decode of the same file (`multisurvey.dump`) — an independent oracle.
 
 ## Deploy — Cloudflare Pages
 

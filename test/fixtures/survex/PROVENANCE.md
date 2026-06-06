@@ -6,12 +6,12 @@ project's own test suite, used here to validate the `.3d` parser against genuine
 
 | File | Source |
 |------|--------|
-| `dump3ddate.3d` | https://github.com/ojwb/survex/blob/master/tests/dump3ddate.3d |
-| `dump3ddate.dump` | https://github.com/ojwb/survex/blob/master/tests/dump3ddate.dump |
+| `dump3ddate.3d` / `.dump` | https://github.com/ojwb/survex/blob/master/tests/dump3ddate.3d |
 
-`dump3ddate.3d` is a real **v8** `.3d` file written by `cavern`. `dump3ddate.dump`
-is the corresponding human-readable decode produced by Survex's own `dump3d` tool
-— it is our ground-truth oracle for station/leg coordinates, labels, and dates.
+`dump3ddate.3d` is a real **v8** file written by `cavern`. `dump3ddate.dump` is the
+human-readable decode produced by Survex's own `dump3d` tool — the ground-truth
+oracle for station/leg coordinates, labels, and dates. It exercises the DATE
+opcodes, the label delta scheme, MOVE/LINE/LABEL, and the v8 header/flags.
 
 Survex is distributed under the GNU GPL v2+. These small factual data files are
 included solely as test vectors. See https://survex.com/ for the full project and

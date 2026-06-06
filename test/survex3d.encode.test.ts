@@ -149,8 +149,8 @@ describe("Survex .3d encoder round-trip", () => {
     expect(model.lrud![0]).toMatchObject({ l: 1, r: 1, u: 1, d: 1 });
   });
 
-  it("rejects non-.3d files and bad magic / unsupported versions", () => {
-    expect(() => parseCaveFile("cave.plt", new ArrayBuffer(0))).toThrow(UnsupportedFormatError);
+  it("rejects unsupported files and bad magic / unsupported versions", () => {
+    expect(() => parseCaveFile("cave.lox", new ArrayBuffer(0))).toThrow(UnsupportedFormatError);
 
     const notSurvex = new TextEncoder().encode("hello world\n");
     expect(() => parse(notSurvex)).toThrow(Survex3dParseError);

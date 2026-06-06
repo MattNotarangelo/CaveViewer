@@ -8,17 +8,19 @@
 
 export * from "./types";
 export { parseSurvex3d, Survex3dParseError } from "./survex3d";
+export { parseCompassPlt, CompassPltParseError } from "./compassPlt";
 export { caveStats } from "./caveStats";
 export type { CaveStats } from "./caveStats";
 
 import { CaveModel } from "./types";
 import { parseSurvex3d } from "./survex3d";
+import { parseCompassPlt } from "./compassPlt";
 
 export class UnsupportedFormatError extends Error {
   constructor(readonly extension: string) {
     super(
-      `Unsupported file type "${extension}". Supported: .3d (Survex). ` +
-        `Compass .plt and Therion .lox are planned.`,
+      `Unsupported file type "${extension}". Supported: .3d (Survex), .plt (Compass). ` +
+        `Therion .lox is planned.`,
     );
     this.name = "UnsupportedFormatError";
   }
@@ -30,6 +32,8 @@ export function parseCaveFile(filename: string, buffer: ArrayBuffer): CaveModel 
   switch (ext) {
     case "3d":
       return parseSurvex3d(buffer);
+    case "plt":
+      return parseCompassPlt(buffer);
     default:
       throw new UnsupportedFormatError(ext ? `.${ext}` : filename);
   }
