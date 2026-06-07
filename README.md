@@ -16,8 +16,8 @@ feature, not a limitation. The app deploys as a pure static site.
 | **1** | Survex `.3d` (v8): centreline render, orbit/pan/zoom, depth colouring, drag-and-drop, fit-to-view, length/bounds readout, north indicator | ✅ done |
 | **1+** | Preset plan/elevation views, orthographic toggle, scale bar, colour modes (elevation / distance-from-entrance / gradient / survey / single), leg-type visibility toggles, PNG export _(ideas adopted from [CaveView.js](https://github.com/aardgoose/CaveView.js))_ | ✅ done |
 | **2** | **Compass `.plt`** (processed coordinates, LRUD, splays, multi-survey) | ✅ done |
-| **3** | **Therion `.lox`** + lit triangle-mesh passage walls (the modelled scrap surfaces) | ✅ done |
-| next | Colour by date; station labels; measurement tool; survey-tree show/hide; LRUD passage tubes; clipping plane / depth cursor; depth fog | planned |
+| **3** | **Therion `.lox`** + lit triangle-mesh passage walls (the modelled scrap surfaces); **LRUD passage tubes** reconstructed for `.3d`/`.plt` | ✅ done |
+| next | Colour by date; station labels; measurement tool; survey-tree show/hide; clipping plane / depth cursor; depth fog | planned |
 
 ## Architecture
 
@@ -156,7 +156,7 @@ choice is remembered):
 - **Preset views**: Plan (looking down, North up) and N/S/E/W elevations, plus 3D. <kbd>P</kbd> = plan.
 - **Projection**: toggle Perspective ⇄ Orthographic (true-scale plan/elevation).
 - **Colour by**: elevation, distance-from-entrance, gradient (steepness), survey/series, or single colour. The legend adapts to the mode.
-- **Show**: toggle splay / surface / duplicate legs, and the modelled passage-wall mesh (Walls, for Therion `.lox`).
+- **Show**: toggle splay / surface / duplicate legs, and the passage-wall mesh (Walls — Therion `.lox` scrap meshes, or tubes reconstructed from LRUD cross-sections for `.3d`/`.plt`).
 
 **Toolbar** (bottom):
 

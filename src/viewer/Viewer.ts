@@ -11,6 +11,7 @@ import type { CaveModel } from "../parser/index";
 import { buildCenterline, type LegVisibility } from "./buildCenterline";
 import type { ColorMode, LegendSpec } from "./coloring";
 import { surveyToThree } from "./coords";
+import { buildLrudTubes } from "./buildLrudTubes";
 
 /** What a plain left-drag does. See {@link Viewer.setLeftDragMode}. */
 export type LeftDragMode = "pan" | "orbit";
@@ -121,11 +122,18 @@ export class Viewer {
     this.setView("iso");
   }
 
-  /** Build the lit triangle-mesh passage walls (Therion .lox), if present. */
+  /**
+   * Build the lit triangle-mesh passage walls: the Therion .lox scrap meshes if
+   * present, otherwise tubes reconstructed from LRUD cross-sections (.3d/.plt).
+   */
   private buildWalls(model: CaveModel): void {
     this.clearWalls();
-    if (!model.walls || model.walls.indices.length === 0) return;
-    const src = model.walls.positions;
+    let walls = model.walls;
+    if ((!walls || walls.indices.length === 0) && model.lrud && model.lrud.length > 0) {
+      walls = buildLrudTubes(model);
+    }
+    if (!walls || walls.indices.length === 0) return;
+    const src = walls.positions;
     const remapped = new Float32Array(src.length);
     for (let i = 0; i + 2 < src.length; i += 3) {
       const [x, y, z] = surveyToThree(src[i], src[i + 1], src[i + 2]);
@@ -135,7 +143,7 @@ export class Viewer {
     }
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.BufferAttribute(remapped, 3));
-    geometry.setIndex(new THREE.BufferAttribute(model.walls.indices, 1));
+    geometry.setIndex(new THREE.BufferAttribute(walls.indices, 1));
     geometry.computeVertexNormals();
     const material = new THREE.MeshStandardMaterial({
       color: 0x9a8c78,
