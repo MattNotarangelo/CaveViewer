@@ -10,6 +10,7 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import type { CaveModel } from "../parser/index";
 import { buildCenterline, type LegVisibility } from "./buildCenterline";
 import type { ColorMode, LegendSpec } from "./coloring";
+import { surveyToThree } from "./coords";
 
 /** What a plain left-drag does. See {@link Viewer.setLeftDragMode}. */
 export type LeftDragMode = "pan" | "orbit";
@@ -41,6 +42,7 @@ export class Viewer {
   private controls: OrbitControls;
   private readonly material: LineMaterial;
   private lines: LineSegments2 | null = null;
+  private walls: THREE.Mesh | null = null;
   private model: CaveModel | null = null;
   private modelBox = new THREE.Box3();
   private leftDragMode: LeftDragMode = "pan";
@@ -60,6 +62,14 @@ export class Viewer {
 
   constructor(private readonly container: HTMLElement) {
     this.scene.background = new THREE.Color(0x10131a);
+
+    // Lighting affects only lit materials (the .lox wall mesh); the fat-line
+    // centreline is unlit, so these are harmless when no walls are present.
+    this.scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+    this.scene.add(new THREE.HemisphereLight(0xbfd4ff, 0x2a2118, 0.7));
+    const sun = new THREE.DirectionalLight(0xffffff, 1.1);
+    sun.position.set(0.5, 1, 0.4);
+    this.scene.add(sun);
 
     const { clientWidth: w, clientHeight: h } = container;
     const aspect = w / Math.max(1, h);
@@ -105,8 +115,47 @@ export class Viewer {
   setModel(model: CaveModel): void {
     this.model = model;
     this.modelBox = this.computeBox(model);
+    this.buildWalls(model); // .lox passage-wall mesh (if any); independent of colour mode
     this.rebuild();
     this.setView("iso");
+  }
+
+  /** Build the lit triangle-mesh passage walls (Therion .lox), if present. */
+  private buildWalls(model: CaveModel): void {
+    this.clearWalls();
+    if (!model.walls || model.walls.indices.length === 0) return;
+    const src = model.walls.positions;
+    const remapped = new Float32Array(src.length);
+    for (let i = 0; i + 2 < src.length; i += 3) {
+      const [x, y, z] = surveyToThree(src[i], src[i + 1], src[i + 2]);
+      remapped[i] = x;
+      remapped[i + 1] = y;
+      remapped[i + 2] = z;
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(remapped, 3));
+    geometry.setIndex(new THREE.BufferAttribute(model.walls.indices, 1));
+    geometry.computeVertexNormals();
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x9a8c78,
+      roughness: 0.95,
+      metalness: 0.0,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.55,
+      depthWrite: false, // let the centreline show through the translucent walls
+    });
+    this.walls = new THREE.Mesh(geometry, material);
+    this.scene.add(this.walls);
+  }
+
+  private clearWalls(): void {
+    if (this.walls) {
+      this.scene.remove(this.walls);
+      this.walls.geometry.dispose();
+      (this.walls.material as THREE.Material).dispose();
+      this.walls = null;
+    }
   }
 
   setColorMode(mode: ColorMode): void {
@@ -416,6 +465,7 @@ export class Viewer {
 
   dispose(): void {
     this.disposed = true;
+    this.clearWalls();
     this.resizeObserver.disconnect();
     const dom = this.renderer.domElement;
     dom.removeEventListener("pointerdown", this.onPointerDown);

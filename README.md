@@ -15,9 +15,9 @@ feature, not a limitation. The app deploys as a pure static site.
 |-------|-------|-------|
 | **1** | Survex `.3d` (v8): centreline render, orbit/pan/zoom, depth colouring, drag-and-drop, fit-to-view, length/bounds readout, north indicator | ✅ done |
 | **1+** | Preset plan/elevation views, orthographic toggle, scale bar, colour modes (elevation / distance-from-entrance / gradient / survey / single), leg-type visibility toggles, PNG export _(ideas adopted from [CaveView.js](https://github.com/aardgoose/CaveView.js))_ | ✅ done |
-| **2** | **Compass `.plt`** (binary-equivalent processed coordinates, LRUD, splays, multi-survey) | ✅ done |
-| 2 | Colour by date; station labels; measurement tool; survey-tree show/hide | planned |
-| 3 | Therion `.lox` + wall meshes; LRUD passage tubes; clipping plane / depth cursor; depth fog | planned |
+| **2** | **Compass `.plt`** (processed coordinates, LRUD, splays, multi-survey) | ✅ done |
+| **3** | **Therion `.lox`** + lit triangle-mesh passage walls (the modelled scrap surfaces) | ✅ done |
+| next | Colour by date; station labels; measurement tool; survey-tree show/hide; LRUD passage tubes; clipping plane / depth cursor; depth fog | planned |
 
 ## Architecture
 
@@ -74,13 +74,16 @@ The parser stays axis-faithful; all axis remapping for rendering lives in
 |--------|------|------------------|
 | Survex `.3d` (v8) | binary | [Official 3d format spec](https://survex.com/docs/3dformat.htm); cross-checked against Survex's reference reader [`src/img.c`](https://github.com/ojwb/survex/blob/master/src/img.c) (`img_read_item_new`, `read_v8label`) |
 | Compass `.plt` | text | Cross-checked against Survex's reference Compass reader [`src/img.c`](https://github.com/ojwb/survex/blob/master/src/img.c); coordinates are North/East/Up in feet → metres |
-| Therion `.lox` | binary | _planned_ |
+| Therion `.lox` | binary | Reverse-engineered from Therion's reference reader [`src/common-utils/lxFile.{h,cxx}`](https://github.com/therion/therion/blob/master/src/common-utils/lxFile.cxx) (chunked format; record fields follow each struct's `Load()`, not the `.h` declaration order) |
 
 The `.3d` parser implements the v8 layout exactly — byte offsets are taken from
 the spec and the reference C reader, not guessed. Files older than v8 are rejected
 with a clear message (re-save with a recent `cavern`, which writes v8 by default).
 The `.plt` parser reads Compass's processed plot coordinates, LRUD passage data,
-splay/duplicate/surface shot flags, and multi-survey sections.
+splay/duplicate/surface shot flags, and multi-survey sections. The `.lox` parser
+reads the centreline plus the modelled passage-wall triangle meshes ("scraps"),
+which the viewer renders as a lit, translucent surface — `.lox` is validated by a
+cross-format test against the same cave's `.3d`.
 
 ## Develop, test, build
 

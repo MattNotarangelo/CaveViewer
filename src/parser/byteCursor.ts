@@ -89,10 +89,26 @@ export class ByteCursor {
     return out;
   }
 
+  /** Read a little-endian 64-bit float (IEEE-754 double). */
+  f64(): number {
+    this.ensure(8);
+    const v = this.view.getFloat64(this.pos, true);
+    this.pos += 8;
+    return v;
+  }
+
   /** Skip `n` bytes. */
   skip(n: number): void {
     this.ensure(n);
     this.pos += n;
+  }
+
+  /** Move the cursor to an absolute byte offset. */
+  seek(pos: number): void {
+    if (pos < 0 || pos > this.bytes.length) {
+      throw new ByteCursorError(`Seek out of range to ${pos}`, this.pos);
+    }
+    this.pos = pos;
   }
 
   /**

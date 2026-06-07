@@ -150,7 +150,7 @@ describe("Survex .3d encoder round-trip", () => {
   });
 
   it("rejects unsupported files and bad magic / unsupported versions", () => {
-    expect(() => parseCaveFile("cave.lox", new ArrayBuffer(0))).toThrow(UnsupportedFormatError);
+    expect(() => parseCaveFile("cave.svx", new ArrayBuffer(0))).toThrow(UnsupportedFormatError);
 
     const notSurvex = new TextEncoder().encode("hello world\n");
     expect(() => parse(notSurvex)).toThrow(Survex3dParseError);

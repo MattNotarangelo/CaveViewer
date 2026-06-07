@@ -28,8 +28,9 @@ export class Hud {
 
   showWelcome(): void {
     this.body.innerHTML = `
-      <p class="hud-hint">Drag &amp; drop a Survex <code>.3d</code> or Compass
-      <code>.plt</code> file anywhere, or use the buttons below.</p>`;
+      <p class="hud-hint">Drag &amp; drop a Survex <code>.3d</code>, Compass
+      <code>.plt</code> or Therion <code>.lox</code> file anywhere, or use the
+      buttons below.</p>`;
   }
 
   showError(message: string): void {
