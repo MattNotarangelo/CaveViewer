@@ -98,9 +98,10 @@ npm run build        # type-check then produce static site in dist/
 npm run preview      # serve the production build locally
 ```
 
-The "Load example cave" button loads `public/example-cave.3d` — a real Survex
-v8 survey (a genuine cave, with its name removed from the title so it isn't
-identifiable) included to demonstrate the viewer on real-world data.
+The "Load example cave" button loads `public/example-cave.lox` — a real Therion
+survey (a genuine cave, anonymised by replacing its name) included to
+demonstrate the viewer on real-world data, including the modelled passage-wall
+mesh that `.lox` carries.
 
 ### Testing — parser correctness is the whole ballgame
 

@@ -98,9 +98,9 @@ snapBtn.disabled = true;
 snapBtn.addEventListener("click", () => viewer.snapshot("cave-survey.png"));
 exampleBtn.addEventListener("click", async () => {
   try {
-    const res = await fetch("./example-cave.3d");
+    const res = await fetch("./example-cave.lox");
     if (!res.ok) throw new Error(`Example not found (HTTP ${res.status})`);
-    loadFile("example-cave.3d", await res.arrayBuffer());
+    loadFile("example-cave.lox", await res.arrayBuffer());
   } catch (err) {
     hud.showError(err instanceof Error ? err.message : String(err));
   }

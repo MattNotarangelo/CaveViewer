@@ -247,12 +247,20 @@ function assemble(
 
   const bounds = computeBounds(stations, wallPositions);
 
-  // Root survey (its own parent, or one with no parent in the map) names the cave.
+  // Root survey (its own parent, or one with no parent in the map) names the
+  // cave. Some files have an empty container root, so fall back to the first
+  // survey that actually has a title/name.
   let title = "";
   for (const [id, s] of surveys) {
     if (s.parent === id || !surveys.has(s.parent)) {
       title = s.title || s.name;
-      break;
+      if (title) break;
+    }
+  }
+  if (!title) {
+    for (const s of surveys.values()) {
+      title = s.title || s.name;
+      if (title) break;
     }
   }
 
