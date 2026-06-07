@@ -24,6 +24,9 @@ body {
 #app {
   position: fixed;
   inset: 0;
+  /* This is a drag-to-navigate 3D view; never start a text selection on a drag. */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 #viewport {
@@ -170,6 +173,15 @@ body {
   /* Stack controls + legend; scroll instead of overlapping on short windows. */
   max-height: calc(100vh - 84px - 80px);
   overflow-y: auto;
+  /* The container's transparent areas (the gap between the panels, and the
+     space beside the narrower legend) must not eat pointer events — let drags
+     there fall through to the canvas so they orbit/pan. The panels themselves
+     re-enable pointer events below. */
+  pointer-events: none;
+}
+
+#controls-host > * {
+  pointer-events: auto;
 }
 
 .controls {
