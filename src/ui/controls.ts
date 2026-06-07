@@ -12,12 +12,14 @@ export interface ControlsCallbacks {
   onProjection: (p: Projection) => void;
   onColorMode: (m: ColorMode) => void;
   onLegVisibility: (show: LegVisibility) => void;
+  onWallsVisible: (visible: boolean) => void;
 }
 
 export interface ControlsInitial {
   projection: Projection;
   colorMode: ColorMode;
   show: LegVisibility;
+  wallsVisible: boolean;
 }
 
 const VIEW_BUTTONS: Array<{ view: PresetView; label: string; title: string }> = [
@@ -96,6 +98,16 @@ export class ControlsPanel {
       wrap.appendChild(document.createTextNode(" " + label));
       return wrap;
     };
+    // The wall mesh (Therion .lox passage surfaces) — separate from the
+    // "Surface" leg toggle above, which hides above-ground *legs*.
+    const wallsWrap = document.createElement("label");
+    const wallsBox = document.createElement("input");
+    wallsBox.type = "checkbox";
+    wallsBox.checked = initial.wallsVisible;
+    wallsBox.title = "Show modelled passage walls (Therion .lox)";
+    wallsBox.addEventListener("change", () => cb.onWallsVisible(wallsBox.checked));
+    wallsWrap.append(wallsBox, document.createTextNode(" Walls"));
+
     const showTitle = document.createElement("span");
     showTitle.className = "controls-show-title";
     showTitle.textContent = "Show:";
@@ -104,6 +116,7 @@ export class ControlsPanel {
       makeToggle("splay", "Splays"),
       makeToggle("surface", "Surface"),
       makeToggle("duplicate", "Duplicate"),
+      wallsWrap,
     );
 
     this.el.append(viewRow, projRow, colourRow, showRow);

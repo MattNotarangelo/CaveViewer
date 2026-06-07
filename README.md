@@ -156,7 +156,7 @@ choice is remembered):
 - **Preset views**: Plan (looking down, North up) and N/S/E/W elevations, plus 3D. <kbd>P</kbd> = plan.
 - **Projection**: toggle Perspective ⇄ Orthographic (true-scale plan/elevation).
 - **Colour by**: elevation, distance-from-entrance, gradient (steepness), survey/series, or single colour. The legend adapts to the mode.
-- **Show**: toggle splay / surface / duplicate legs.
+- **Show**: toggle splay / surface / duplicate legs, and the modelled passage-wall mesh (Walls, for Therion `.lox`).
 
 **Toolbar** (bottom):
 

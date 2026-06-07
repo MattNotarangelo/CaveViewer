@@ -43,6 +43,7 @@ export class Viewer {
   private readonly material: LineMaterial;
   private lines: LineSegments2 | null = null;
   private walls: THREE.Mesh | null = null;
+  private wallsVisible = true;
   private model: CaveModel | null = null;
   private modelBox = new THREE.Box3();
   private leftDragMode: LeftDragMode = "pan";
@@ -146,7 +147,23 @@ export class Viewer {
       depthWrite: false, // let the centreline show through the translucent walls
     });
     this.walls = new THREE.Mesh(geometry, material);
+    this.walls.visible = this.wallsVisible;
     this.scene.add(this.walls);
+  }
+
+  /** Show or hide the .lox passage-wall mesh. */
+  setWallsVisible(visible: boolean): void {
+    this.wallsVisible = visible;
+    if (this.walls) this.walls.visible = visible;
+  }
+
+  get wallsVisibleState(): boolean {
+    return this.wallsVisible;
+  }
+
+  /** Whether the current model has a wall mesh (so the UI can show the toggle). */
+  get hasWalls(): boolean {
+    return this.walls !== null;
   }
 
   private clearWalls(): void {

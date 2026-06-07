@@ -43,11 +43,13 @@ const controls = new ControlsPanel(
     onProjection: (p) => viewer.setProjection(p),
     onColorMode: (m) => viewer.setColorMode(m),
     onLegVisibility: (show) => viewer.setLegVisibility(show),
+    onWallsVisible: (visible) => viewer.setWallsVisible(visible),
   },
   {
     projection: viewer.projectionMode,
     colorMode: viewer.colorModeId,
     show: viewer.legVisibilityState,
+    wallsVisible: viewer.wallsVisibleState,
   },
 );
 controlsHost.appendChild(controls.el);
