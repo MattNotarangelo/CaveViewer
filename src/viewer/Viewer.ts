@@ -77,6 +77,11 @@ export class Viewer {
   private downPos: { x: number; y: number } | null = null;
   private selectedStation: number | null = null;
   private marker: THREE.Mesh | null = null;
+  // Measure tool: pick two stations; draw a line + endpoint markers between them.
+  private measuring = false;
+  private measurePts: number[] = [];
+  private measureMarkers: (THREE.Mesh | null)[] = [null, null];
+  private measureLine: THREE.Line | null = null;
 
   /** Fires whenever the camera moves (north indicator, scale bar). */
   onCameraChange?: () => void;
@@ -88,6 +93,8 @@ export class Viewer {
   onPick?: (stationId: number | null) => void;
   /** Fires on hover (not dragging) with the station under the cursor, or null. */
   onHover?: (stationId: number | null, clientX: number, clientY: number) => void;
+  /** Fires when the measure tool has two endpoints (or null,null when cleared). */
+  onMeasure?: (aId: number | null, bId: number | null) => void;
 
   constructor(private readonly container: HTMLElement) {
     this.scene.background = new THREE.Color(0x10131a);
@@ -145,6 +152,7 @@ export class Viewer {
     this.model = model;
     this.modelBox = this.computeBox(model);
     this.clearMarker(); // selection + marker belong to the previous model
+    this.clearMeasure();
     this.buildWalls(model); // .lox passage-wall mesh (if any); independent of colour mode
     this.rebuild();
     this.setView("iso");
@@ -567,8 +575,11 @@ export class Viewer {
       const moved = Math.hypot(e.clientX - this.downPos.x, e.clientY - this.downPos.y);
       if (moved < CLICK_MOVE_PX) {
         const id = this.pickStation(e.clientX, e.clientY);
-        this.setSelectedStation(id);
-        this.onPick(id);
+        if (this.measuring) this.handleMeasureClick(id);
+        else {
+          this.setSelectedStation(id);
+          this.onPick(id);
+        }
       }
     }
     this.downPos = null;
@@ -612,22 +623,91 @@ export class Viewer {
       return;
     }
     if (!this.marker) {
-      const size = this.modelBox.getSize(new THREE.Vector3());
-      const r = Math.max(Math.max(size.x, size.y, size.z) * 0.012, 0.3);
-      const geom = new THREE.SphereGeometry(r, 16, 12);
-      const mat = new THREE.MeshBasicMaterial({ color: 0x58a6ff, depthTest: false, transparent: true, opacity: 0.9 });
-      this.marker = new THREE.Mesh(geom, mat);
-      this.marker.renderOrder = 999; // draw over walls/lines
-      this.scene.add(this.marker);
+      this.marker = this.makeSphere(0x58a6ff);
     }
-    const s = this.model.stations[id];
-    const [x, y, z] = surveyToThree(s.x, s.y, s.z);
-    this.marker.position.set(x, y, z);
+    this.marker.position.copy(this.stationPoint(id));
     this.marker.visible = true;
   }
 
   get selectedStationId(): number | null {
     return this.selectedStation;
+  }
+
+  /** A bright depth-test-free sphere marker, sized relative to the model. */
+  private makeSphere(color: number): THREE.Mesh {
+    const size = this.modelBox.getSize(new THREE.Vector3());
+    const r = Math.max(Math.max(size.x, size.y, size.z) * 0.012, 0.3);
+    const mat = new THREE.MeshBasicMaterial({
+      color,
+      depthTest: false,
+      transparent: true,
+      opacity: 0.9,
+    });
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), mat);
+    mesh.renderOrder = 999; // draw over walls/lines
+    this.scene.add(mesh);
+    return mesh;
+  }
+
+  /** World-space position of a station (Three coords). */
+  private stationPoint(id: number): THREE.Vector3 {
+    const s = this.model!.stations[id];
+    const [x, y, z] = surveyToThree(s.x, s.y, s.z);
+    return new THREE.Vector3(x, y, z);
+  }
+
+  /** Enter/leave the measure tool; clears any prior measurement and selection. */
+  setMeasuring(on: boolean): void {
+    this.measuring = on;
+    this.clearMeasure();
+    this.setSelectedStation(null);
+    this.onPick?.(null);
+  }
+
+  private handleMeasureClick(id: number | null): void {
+    if (id === null) return; // ignore empty clicks while measuring
+    if (this.measurePts.length === 2) this.clearMeasure(); // a third click starts over
+    const slot = this.measurePts.length;
+    this.measurePts.push(id);
+    const m = this.makeSphere(0xffc451);
+    m.position.copy(this.stationPoint(id));
+    this.measureMarkers[slot] = m;
+    if (this.measurePts.length === 2) {
+      this.drawMeasureLine();
+      this.onMeasure?.(this.measurePts[0], this.measurePts[1]);
+    } else {
+      this.onMeasure?.(id, null);
+    }
+  }
+
+  private drawMeasureLine(): void {
+    if (this.measureLine) this.scene.remove(this.measureLine);
+    const a = this.stationPoint(this.measurePts[0]);
+    const b = this.stationPoint(this.measurePts[1]);
+    const geom = new THREE.BufferGeometry().setFromPoints([a, b]);
+    const mat = new THREE.LineBasicMaterial({ color: 0xffc451, depthTest: false, transparent: true });
+    this.measureLine = new THREE.Line(geom, mat);
+    this.measureLine.renderOrder = 998;
+    this.scene.add(this.measureLine);
+  }
+
+  private clearMeasure(): void {
+    this.measurePts = [];
+    for (let i = 0; i < this.measureMarkers.length; i++) {
+      const m = this.measureMarkers[i];
+      if (m) {
+        this.scene.remove(m);
+        m.geometry.dispose();
+        (m.material as THREE.Material).dispose();
+      }
+      this.measureMarkers[i] = null;
+    }
+    if (this.measureLine) {
+      this.scene.remove(this.measureLine);
+      this.measureLine.geometry.dispose();
+      (this.measureLine.material as THREE.Material).dispose();
+      this.measureLine = null;
+    }
   }
 
   /** Select a station and pan the camera to centre it (keeps zoom/orientation). */

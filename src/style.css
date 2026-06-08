@@ -223,6 +223,19 @@ body {
   background: var(--panel-bg);
 }
 
+#toolbar button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--inset-hover-bg);
+}
+
+.measure-ends {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--fg-dim);
+  word-break: break-word;
+}
+
 /* --- View controls panel (top-right, below the compass) --- */
 #controls-host {
   position: absolute;

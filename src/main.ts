@@ -13,6 +13,7 @@ import { Hud } from "./ui/hud";
 import { ControlsPanel } from "./ui/controls";
 import { StationInfo } from "./ui/stationInfo";
 import { StationSearch } from "./ui/stationSearch";
+import { MeasurePanel } from "./ui/measurePanel";
 import { ViewCube } from "./viewer/viewCube";
 import type { UnitSystem } from "./ui/units";
 
@@ -26,6 +27,7 @@ const openBtn = document.getElementById("btn-open") as HTMLButtonElement;
 const exampleBtn = document.getElementById("btn-example") as HTMLButtonElement;
 const fitBtn = document.getElementById("btn-fit") as HTMLButtonElement;
 const snapBtn = document.getElementById("btn-snapshot") as HTMLButtonElement;
+const measureBtn = document.getElementById("btn-measure") as HTMLButtonElement;
 const controlsBtn = document.getElementById("btn-controls") as HTMLButtonElement;
 const unitsBtn = document.getElementById("btn-units") as HTMLButtonElement;
 const themeBtn = document.getElementById("btn-theme") as HTMLButtonElement;
@@ -50,6 +52,7 @@ stationInfo.onClose = () => {
 };
 const search = new StationSearch();
 search.onSelect = (id) => viewer.focusStation(id);
+const measurePanel = new MeasurePanel();
 
 // Tooltip that follows the cursor showing the hovered station's name.
 const tooltip = document.createElement("div");
@@ -58,6 +61,7 @@ tooltip.style.display = "none";
 
 panel.appendChild(hud.el);
 panel.appendChild(stationInfo.el); // stacks under the info card (top-left)
+panel.appendChild(measurePanel.el); // shares the spot (only one shows at a time)
 app.appendChild(north.el);
 app.appendChild(scaleBar.el);
 app.appendChild(viewCube.el);
@@ -94,6 +98,7 @@ viewer.onLegendChange = (spec) => legend.setSpec(spec);
 // Plan view forces (and locks) orthographic; keep the projection toggle in sync.
 viewer.onPlanModeChange = (inPlan) => controls.setProjectionState(viewer.projectionMode, inPlan);
 viewer.onPick = (id) => stationInfo.show(id);
+viewer.onMeasure = (a, b) => measurePanel.show(a, b);
 viewer.onHover = (id, x, y) => {
   const label = id !== null && currentModel ? currentModel.stations[id].label : "";
   if (!label) {
@@ -118,14 +123,18 @@ function loadFile(filename: string, buffer: ArrayBuffer): void {
     stationInfo.setData(model, entranceDistances(model).distance);
     stationInfo.show(null); // clear any prior selection
     search.setModel(model);
+    measurePanel.setModel(model);
+    setMeasureMode(false); // a fresh cave starts with the tool off
     hasModel = model.legs.length > 0;
     controlsHost.style.display = hasModel ? "" : "none";
     viewCube.el.style.display = hasModel ? "" : "none";
     snapBtn.disabled = !hasModel;
+    measureBtn.disabled = !hasModel;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     hud.showError(message);
     stationInfo.show(null);
+    setMeasureMode(false);
     controlsHost.style.display = "none";
     viewCube.el.style.display = "none";
     legend.setSpec({ kind: "hidden" });
@@ -150,6 +159,17 @@ fileInput.addEventListener("change", () => {
 fitBtn.addEventListener("click", () => viewer.fitToView());
 snapBtn.disabled = true;
 snapBtn.addEventListener("click", () => viewer.snapshot("cave-survey.png"));
+
+// Measure tool: toggle the mode; the panel + 3D markers come from the viewer.
+measureBtn.disabled = true;
+function setMeasureMode(on: boolean): void {
+  viewer.setMeasuring(on);
+  measureBtn.classList.toggle("active", on);
+  measureBtn.textContent = on ? "Measuring…" : "Measure";
+  if (!on) measurePanel.show(null, null);
+}
+measureBtn.addEventListener("click", () => setMeasureMode(!measureBtn.classList.contains("active")));
+measurePanel.onClose = () => setMeasureMode(false);
 exampleBtn.addEventListener("click", async () => {
   try {
     const res = await fetch("./example-cave.lox");
@@ -187,6 +207,7 @@ function applyUnits(next: UnitSystem): void {
   hud.setUnits(next);
   scaleBar.setUnits(next);
   stationInfo.setUnits(next);
+  measurePanel.setUnits(next);
   unitsBtn.textContent = next === "imperial" ? "Units: Imperial" : "Units: Metric";
 }
 applyUnits(units);
