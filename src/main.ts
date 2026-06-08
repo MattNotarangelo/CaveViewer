@@ -10,6 +10,7 @@ import { NorthIndicator } from "./viewer/northIndicator";
 import { ScaleBar } from "./viewer/scaleBar";
 import { Hud } from "./ui/hud";
 import { ControlsPanel } from "./ui/controls";
+import type { UnitSystem } from "./ui/units";
 
 const app = document.getElementById("app");
 if (!app) throw new Error("#app element not found");
@@ -22,6 +23,8 @@ const exampleBtn = document.getElementById("btn-example") as HTMLButtonElement;
 const fitBtn = document.getElementById("btn-fit") as HTMLButtonElement;
 const snapBtn = document.getElementById("btn-snapshot") as HTMLButtonElement;
 const controlsBtn = document.getElementById("btn-controls") as HTMLButtonElement;
+const unitsBtn = document.getElementById("btn-units") as HTMLButtonElement;
+const themeBtn = document.getElementById("btn-theme") as HTMLButtonElement;
 const panel = document.getElementById("panel") as HTMLElement;
 const controlsHost = document.getElementById("controls-host") as HTMLElement;
 
@@ -124,6 +127,41 @@ controlsBtn.addEventListener("click", () => {
   const next: LeftDragMode = viewer.leftDrag === "pan" ? "orbit" : "pan";
   applyDragMode(next);
   localStorage.setItem(DRAG_KEY, next);
+});
+
+// Unit system (metric / imperial), persisted across sessions. Affects the HUD
+// stats and the scale bar; the model is always stored in metres.
+const UNITS_KEY = "cv.units";
+let units: UnitSystem = localStorage.getItem(UNITS_KEY) === "imperial" ? "imperial" : "metric";
+function applyUnits(next: UnitSystem): void {
+  units = next;
+  hud.setUnits(next);
+  scaleBar.setUnits(next);
+  unitsBtn.textContent = next === "imperial" ? "Units: Imperial" : "Units: Metric";
+}
+applyUnits(units);
+unitsBtn.addEventListener("click", () => {
+  const next: UnitSystem = units === "metric" ? "imperial" : "metric";
+  applyUnits(next);
+  localStorage.setItem(UNITS_KEY, next);
+});
+
+// Colour theme (dark / light), persisted across sessions. Drives the CSS
+// variables via data-theme and keeps the 3D scene background in step.
+const THEME_KEY = "cv.theme";
+const SCENE_BG = { dark: 0x10131a, light: 0xeef1f6 } as const;
+type Theme = keyof typeof SCENE_BG;
+let theme: Theme = localStorage.getItem(THEME_KEY) === "light" ? "light" : "dark";
+function applyTheme(next: Theme): void {
+  theme = next;
+  document.documentElement.setAttribute("data-theme", next);
+  viewer.setBackground(SCENE_BG[next]);
+  themeBtn.textContent = next === "light" ? "Theme: Light" : "Theme: Dark";
+}
+applyTheme(theme);
+themeBtn.addEventListener("click", () => {
+  applyTheme(theme === "dark" ? "light" : "dark");
+  localStorage.setItem(THEME_KEY, theme);
 });
 
 // --- Drag and drop anywhere on the window ---

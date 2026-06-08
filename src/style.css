@@ -1,10 +1,31 @@
-:root {
+:root,
+:root[data-theme="dark"] {
   --bg: #10131a;
-  --panel-bg: rgba(20, 24, 33, 0.82);
-  --panel-border: rgba(255, 255, 255, 0.08);
-  --fg: #e6e9ef;
-  --fg-dim: #9aa3b2;
+  --panel-bg: rgba(20, 24, 33, 0.92);
+  --panel-border: rgba(255, 255, 255, 0.1);
+  --fg: #f0f3f8;
+  --fg-dim: #b6bfce;
   --accent: #58a6ff;
+  --error: #ff9a9a;
+  --code-bg: rgba(255, 255, 255, 0.12);
+  --inset-bg: rgba(255, 255, 255, 0.06);
+  --inset-hover-bg: rgba(30, 36, 48, 0.9);
+}
+
+:root[data-theme="light"] {
+  --bg: #eef1f6;
+  --panel-bg: rgba(255, 255, 255, 0.92);
+  --panel-border: rgba(0, 0, 0, 0.14);
+  --fg: #1b1f27;
+  --fg-dim: #515a68;
+  --accent: #1f6feb;
+  --error: #c0341d;
+  --code-bg: rgba(0, 0, 0, 0.08);
+  --inset-bg: rgba(0, 0, 0, 0.05);
+  --inset-hover-bg: rgba(0, 0, 0, 0.08);
+}
+
+:root {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
@@ -57,14 +78,14 @@ body {
 }
 
 .hud-title {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
   margin: 0 0 10px;
   letter-spacing: 0.02em;
 }
 
 .hud-hint {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--fg-dim);
   margin: 0;
   line-height: 1.5;
@@ -72,15 +93,15 @@ body {
 
 .hud-hint code,
 .drop-message code {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--code-bg);
   padding: 1px 5px;
   border-radius: 4px;
   font-size: 0.9em;
 }
 
 .hud-error {
-  font-size: 13px;
-  color: #ff9a9a;
+  font-size: 15px;
+  color: var(--error);
   margin: 0;
   line-height: 1.5;
 }
@@ -90,7 +111,7 @@ body {
   grid-template-columns: auto 1fr;
   gap: 4px 14px;
   margin: 0;
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .hud-stats dt {
@@ -105,7 +126,7 @@ body {
 }
 
 .hud-privacy {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--fg-dim);
   margin: 12px 0 0;
   line-height: 1.45;
@@ -116,7 +137,7 @@ body {
 .hud-repo {
   display: inline-block;
   margin-top: 8px;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--accent);
   text-decoration: none;
 }
@@ -140,7 +161,7 @@ body {
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
   color: var(--fg);
-  font-size: 13px;
+  font-size: 15px;
   padding: 8px 14px;
   border-radius: 8px;
   cursor: pointer;
@@ -150,7 +171,7 @@ body {
 
 #toolbar button:hover {
   border-color: var(--accent);
-  background: rgba(30, 36, 48, 0.9);
+  background: var(--inset-hover-bg);
 }
 
 #toolbar button:disabled {
@@ -193,7 +214,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  font-size: 12px;
+  font-size: 14px;
   min-width: 190px;
 }
 
@@ -204,10 +225,10 @@ body {
 }
 
 .controls button {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--inset-bg);
   border: 1px solid var(--panel-border);
   color: var(--fg);
-  font-size: 12px;
+  font-size: 14px;
   padding: 5px 9px;
   border-radius: 6px;
   cursor: pointer;
@@ -240,12 +261,12 @@ body {
 }
 
 .controls-select select {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--inset-bg);
   border: 1px solid var(--panel-border);
   color: var(--fg);
   border-radius: 6px;
   padding: 5px 6px;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .controls-show {
@@ -292,13 +313,13 @@ body {
 }
 
 .scalebar-label {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--fg-dim);
   font-variant-numeric: tabular-nums;
 }
 
 .legend-note {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--fg);
   max-width: 120px;
   text-align: center;
@@ -315,7 +336,7 @@ body {
 }
 
 .legend-title {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--fg-dim);
   text-align: center;
   margin-bottom: 8px;
@@ -339,7 +360,7 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--fg-dim);
   font-variant-numeric: tabular-nums;
 }
@@ -403,7 +424,7 @@ body {
 }
 
 .drop-message {
-  font-size: 22px;
+  font-size: 24px;
   color: var(--fg);
   padding: 28px 40px;
   border-radius: 14px;

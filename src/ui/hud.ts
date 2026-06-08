@@ -2,16 +2,15 @@
  * The info panel: survey title, derived stats, and a privacy reassurance.
  */
 import { caveStats, type CaveModel } from "../parser/index";
+import { formatLength, toDisplayLength, unitLabel, type UnitSystem } from "./units";
 
 const REPO_URL = "https://github.com/MattNotarangelo/CaveViewer";
-
-function formatLength(m: number): string {
-  return m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${m.toFixed(1)} m`;
-}
 
 export class Hud {
   readonly el: HTMLElement;
   private readonly body: HTMLElement;
+  private units: UnitSystem = "metric";
+  private model: CaveModel | null = null;
 
   constructor() {
     this.el = document.createElement("div");
@@ -26,7 +25,14 @@ export class Hud {
     this.body = this.el.querySelector(".hud-body") as HTMLElement;
   }
 
+  /** Switches the unit system and re-renders the stats if a model is loaded. */
+  setUnits(units: UnitSystem): void {
+    this.units = units;
+    if (this.model) this.update(this.model);
+  }
+
   showWelcome(): void {
+    this.model = null;
     this.body.innerHTML = `
       <p class="hud-hint">Drag &amp; drop a Survex <code>.3d</code>, Compass
       <code>.plt</code> or Therion <code>.lox</code> file anywhere, or use the
@@ -38,18 +44,19 @@ export class Hud {
   }
 
   update(model: CaveModel): void {
+    this.model = model;
+    const u = this.units;
     const s = caveStats(model);
     const m = model.metadata;
+    const lbl = unitLabel(u);
+    const ext = s.extentM.map((v) => toDisplayLength(v, u).toFixed(0));
     const rows: Array<[string, string]> = [
       ["Title", m.title || "(untitled)"],
       ["Stations", s.stationCount.toLocaleString()],
       ["Legs", s.legCount.toLocaleString()],
-      ["Total length", formatLength(s.totalLengthM)],
-      ["Vertical range", `${s.depthRangeM.toFixed(1)} m`],
-      [
-        "Extent (E×N×V)",
-        `${s.extentM[0].toFixed(0)} × ${s.extentM[1].toFixed(0)} × ${s.extentM[2].toFixed(0)} m`,
-      ],
+      ["Total length", formatLength(s.totalLengthM, u)],
+      ["Vertical range", `${toDisplayLength(s.depthRangeM, u).toFixed(1)} ${lbl}`],
+      ["Extent (E×N×V)", `${ext[0]} × ${ext[1]} × ${ext[2]} ${lbl}`],
       ["Format", m.format],
     ];
     if (m.dateRange) {

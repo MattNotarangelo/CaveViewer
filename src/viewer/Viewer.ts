@@ -174,6 +174,11 @@ export class Viewer {
     return this.walls !== null;
   }
 
+  /** Sets the scene clear colour so the 3D view matches the UI theme. */
+  setBackground(color: number): void {
+    (this.scene.background as THREE.Color).set(color);
+  }
+
   private clearWalls(): void {
     if (this.walls) {
       this.scene.remove(this.walls);
