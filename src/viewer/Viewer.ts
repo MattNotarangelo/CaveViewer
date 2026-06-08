@@ -86,6 +86,8 @@ export class Viewer {
   onPlanModeChange?: (inPlan: boolean) => void;
   /** Fires when a station is clicked (or deselected with null). */
   onPick?: (stationId: number | null) => void;
+  /** Fires on hover (not dragging) with the station under the cursor, or null. */
+  onHover?: (stationId: number | null, clientX: number, clientY: number) => void;
 
   constructor(private readonly container: HTMLElement) {
     this.scene.background = new THREE.Color(0x10131a);
@@ -553,7 +555,9 @@ export class Viewer {
   private onPointerMove = (e: PointerEvent): void => {
     if (this.dragging) {
       this.lastPointer = { pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY };
+      return;
     }
+    if (this.onHover) this.onHover(this.pickStation(e.clientX, e.clientY), e.clientX, e.clientY);
   };
 
   private onPointerUp = (e: PointerEvent): void => {
@@ -624,6 +628,19 @@ export class Viewer {
 
   get selectedStationId(): number | null {
     return this.selectedStation;
+  }
+
+  /** Select a station and pan the camera to centre it (keeps zoom/orientation). */
+  focusStation(id: number): void {
+    if (!this.model || id < 0 || id >= this.model.stations.length) return;
+    const s = this.model.stations[id];
+    const [x, y, z] = surveyToThree(s.x, s.y, s.z);
+    const p = new THREE.Vector3(x, y, z);
+    this.activeCam.position.add(p.clone().sub(this.controls.target));
+    this.controls.target.copy(p);
+    this.controls.update();
+    this.setSelectedStation(id);
+    this.onPick?.(id);
   }
 
   get leftDrag(): LeftDragMode {

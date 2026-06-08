@@ -3,7 +3,7 @@
  * UI framework-light (vanilla DOM) per the project's guiding principle.
  */
 import "./style.css";
-import { parseCaveFile } from "./parser/index";
+import { parseCaveFile, type CaveModel } from "./parser/index";
 import { Viewer, type LeftDragMode } from "./viewer/Viewer";
 import { entranceDistances } from "./viewer/coloring";
 import { Legend } from "./viewer/legend";
@@ -12,6 +12,7 @@ import { ScaleBar } from "./viewer/scaleBar";
 import { Hud } from "./ui/hud";
 import { ControlsPanel } from "./ui/controls";
 import { StationInfo } from "./ui/stationInfo";
+import { StationSearch } from "./ui/stationSearch";
 import { ViewCube } from "./viewer/viewCube";
 import type { UnitSystem } from "./ui/units";
 
@@ -47,12 +48,20 @@ stationInfo.onClose = () => {
   viewer.setSelectedStation(null);
   stationInfo.show(null);
 };
+const search = new StationSearch();
+search.onSelect = (id) => viewer.focusStation(id);
+
+// Tooltip that follows the cursor showing the hovered station's name.
+const tooltip = document.createElement("div");
+tooltip.className = "station-tooltip";
+tooltip.style.display = "none";
 
 panel.appendChild(hud.el);
 panel.appendChild(stationInfo.el); // stacks under the info card (top-left)
 app.appendChild(north.el);
 app.appendChild(scaleBar.el);
 app.appendChild(viewCube.el);
+app.appendChild(tooltip);
 viewCube.el.style.display = "none"; // shown once a model loads
 hud.showWelcome();
 
@@ -72,6 +81,7 @@ const controls = new ControlsPanel(
     wallsVisible: viewer.wallsVisibleState,
   },
 );
+controlsHost.appendChild(search.el); // finder sits above the view controls
 controlsHost.appendChild(controls.el);
 controlsHost.appendChild(legend.el); // stacks below the controls (no overlap)
 controlsHost.style.display = "none";
@@ -84,16 +94,30 @@ viewer.onLegendChange = (spec) => legend.setSpec(spec);
 // Plan view forces (and locks) orthographic; keep the projection toggle in sync.
 viewer.onPlanModeChange = (inPlan) => controls.setProjectionState(viewer.projectionMode, inPlan);
 viewer.onPick = (id) => stationInfo.show(id);
+viewer.onHover = (id, x, y) => {
+  const label = id !== null && currentModel ? currentModel.stations[id].label : "";
+  if (!label) {
+    tooltip.style.display = "none";
+    return;
+  }
+  tooltip.textContent = label;
+  tooltip.style.left = `${x + 14}px`;
+  tooltip.style.top = `${y + 14}px`;
+  tooltip.style.display = "";
+};
 
 let hasModel = false;
+let currentModel: CaveModel | null = null;
 
 function loadFile(filename: string, buffer: ArrayBuffer): void {
   try {
     const model = parseCaveFile(filename, buffer);
+    currentModel = model;
     viewer.setModel(model);
     hud.update(model);
     stationInfo.setData(model, entranceDistances(model).distance);
     stationInfo.show(null); // clear any prior selection
+    search.setModel(model);
     hasModel = model.legs.length > 0;
     controlsHost.style.display = hasModel ? "" : "none";
     viewCube.el.style.display = hasModel ? "" : "none";

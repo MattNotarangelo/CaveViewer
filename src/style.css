@@ -413,6 +413,48 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* --- Station finder --- */
+.search {
+  padding: 8px 10px;
+}
+
+.search-input {
+  width: 100%;
+  background: var(--inset-bg);
+  border: 1px solid var(--panel-border);
+  color: var(--fg);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 14px;
+}
+
+.search-input::placeholder {
+  color: var(--fg-dim);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* --- Hover tooltip (station name) --- */
+.station-tooltip {
+  position: absolute;
+  z-index: 30;
+  pointer-events: none;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  color: var(--fg);
+  border-radius: 6px;
+  padding: 3px 7px;
+  font-size: 12px;
+  backdrop-filter: blur(8px);
+  max-width: 280px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* --- ViewCube (bottom-right) --- */
 .viewcube {
   position: absolute;
