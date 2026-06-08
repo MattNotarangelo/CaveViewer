@@ -41,6 +41,11 @@ const VIEW_DIRS: Record<PresetView, { dir: THREE.Vector3; up: THREE.Vector3 }> =
 
 const FOV = 55;
 
+// Picking: a press that moves less than this (px) is a click, not a drag; a
+// station within this screen radius (px) of the click is selected.
+const CLICK_MOVE_PX = 5;
+const PICK_TOLERANCE_PX = 14;
+
 export class Viewer {
   private readonly scene = new THREE.Scene();
   private readonly perspCam: THREE.PerspectiveCamera;
@@ -67,6 +72,11 @@ export class Viewer {
   // entered from so leaving plan can restore it.
   private inPlan = false;
   private prePlanProjection: Projection | null = null;
+  // Station picking: a click (no drag) selects the nearest station in screen
+  // space; a marker highlights it.
+  private downPos: { x: number; y: number } | null = null;
+  private selectedStation: number | null = null;
+  private marker: THREE.Mesh | null = null;
 
   /** Fires whenever the camera moves (north indicator, scale bar). */
   onCameraChange?: () => void;
@@ -74,6 +84,8 @@ export class Viewer {
   onLegendChange?: (spec: LegendSpec) => void;
   /** Fires when plan view is entered/left, so the UI can lock the projection toggle. */
   onPlanModeChange?: (inPlan: boolean) => void;
+  /** Fires when a station is clicked (or deselected with null). */
+  onPick?: (stationId: number | null) => void;
 
   constructor(private readonly container: HTMLElement) {
     this.scene.background = new THREE.Color(0x10131a);
@@ -130,9 +142,20 @@ export class Viewer {
   setModel(model: CaveModel): void {
     this.model = model;
     this.modelBox = this.computeBox(model);
+    this.clearMarker(); // selection + marker belong to the previous model
     this.buildWalls(model); // .lox passage-wall mesh (if any); independent of colour mode
     this.rebuild();
     this.setView("iso");
+  }
+
+  private clearMarker(): void {
+    this.selectedStation = null;
+    if (this.marker) {
+      this.scene.remove(this.marker);
+      this.marker.geometry.dispose();
+      (this.marker.material as THREE.Material).dispose();
+      this.marker = null;
+    }
   }
 
   /**
@@ -523,6 +546,7 @@ export class Viewer {
     if (e.button === 0) {
       this.dragging = true;
       this.lastPointer = { pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY };
+      this.downPos = { x: e.clientX, y: e.clientY };
     }
   };
 
@@ -532,10 +556,75 @@ export class Viewer {
     }
   };
 
-  private onPointerUp = (): void => {
+  private onPointerUp = (e: PointerEvent): void => {
+    // A press that barely moved is a click → select the station under it (a
+    // larger move was an orbit/pan, which leaves the selection untouched).
+    if (this.downPos && this.onPick) {
+      const moved = Math.hypot(e.clientX - this.downPos.x, e.clientY - this.downPos.y);
+      if (moved < CLICK_MOVE_PX) {
+        const id = this.pickStation(e.clientX, e.clientY);
+        this.setSelectedStation(id);
+        this.onPick(id);
+      }
+    }
+    this.downPos = null;
     this.dragging = false;
     this.lastPointer = null;
   };
+
+  /** Nearest named station to a screen position, within a pixel tolerance. */
+  private pickStation(clientX: number, clientY: number): number | null {
+    if (!this.model) return null;
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const px = clientX - rect.left;
+    const py = clientY - rect.top;
+    const cam = this.activeCam;
+    cam.updateMatrixWorld();
+    cam.matrixWorldInverse.copy(cam.matrixWorld).invert();
+    const v = new THREE.Vector3();
+    let best = -1;
+    let bestD2 = PICK_TOLERANCE_PX * PICK_TOLERANCE_PX;
+    for (const s of this.model.stations) {
+      if (s.flags.anonymous) continue; // wall/splay points aren't meaningful to pick
+      const [x, y, z] = surveyToThree(s.x, s.y, s.z);
+      v.set(x, y, z).project(cam);
+      if (v.z < -1 || v.z > 1) continue; // behind camera / clipped
+      const sx = (v.x * 0.5 + 0.5) * rect.width;
+      const sy = (-v.y * 0.5 + 0.5) * rect.height;
+      const d2 = (sx - px) * (sx - px) + (sy - py) * (sy - py);
+      if (d2 < bestD2) {
+        bestD2 = d2;
+        best = s.id;
+      }
+    }
+    return best >= 0 ? best : null;
+  }
+
+  /** Highlight a station with the marker (or clear with null). */
+  setSelectedStation(id: number | null): void {
+    this.selectedStation = id;
+    if (id === null || !this.model) {
+      if (this.marker) this.marker.visible = false;
+      return;
+    }
+    if (!this.marker) {
+      const size = this.modelBox.getSize(new THREE.Vector3());
+      const r = Math.max(Math.max(size.x, size.y, size.z) * 0.012, 0.3);
+      const geom = new THREE.SphereGeometry(r, 16, 12);
+      const mat = new THREE.MeshBasicMaterial({ color: 0x58a6ff, depthTest: false, transparent: true, opacity: 0.9 });
+      this.marker = new THREE.Mesh(geom, mat);
+      this.marker.renderOrder = 999; // draw over walls/lines
+      this.scene.add(this.marker);
+    }
+    const s = this.model.stations[id];
+    const [x, y, z] = surveyToThree(s.x, s.y, s.z);
+    this.marker.position.set(x, y, z);
+    this.marker.visible = true;
+  }
+
+  get selectedStationId(): number | null {
+    return this.selectedStation;
+  }
 
   get leftDrag(): LeftDragMode {
     return this.leftDragMode;

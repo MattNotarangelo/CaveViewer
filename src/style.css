@@ -146,6 +146,48 @@ body {
   text-decoration: underline;
 }
 
+/* --- Selected-station panel (under the info card) --- */
+.station-info {
+  margin-top: 10px;
+}
+
+.station-info-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.station-info-name {
+  font-size: 14px;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.station-info-close {
+  flex: none;
+  background: var(--inset-bg);
+  border: 1px solid var(--panel-border);
+  color: var(--fg);
+  border-radius: 6px;
+  width: 22px;
+  height: 22px;
+  line-height: 1;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.station-info-close:hover {
+  border-color: var(--accent);
+}
+
+.station-info-flags {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--fg-dim);
+}
+
 /* --- Toolbar (bottom-center) --- */
 #toolbar {
   position: absolute;

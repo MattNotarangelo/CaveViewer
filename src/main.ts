@@ -5,11 +5,13 @@
 import "./style.css";
 import { parseCaveFile } from "./parser/index";
 import { Viewer, type LeftDragMode } from "./viewer/Viewer";
+import { entranceDistances } from "./viewer/coloring";
 import { Legend } from "./viewer/legend";
 import { NorthIndicator } from "./viewer/northIndicator";
 import { ScaleBar } from "./viewer/scaleBar";
 import { Hud } from "./ui/hud";
 import { ControlsPanel } from "./ui/controls";
+import { StationInfo } from "./ui/stationInfo";
 import { ViewCube } from "./viewer/viewCube";
 import type { UnitSystem } from "./ui/units";
 
@@ -40,7 +42,14 @@ const viewCube = new ViewCube({
   onOrbit: (dAz, dPolar) => viewer.orbit(dAz, dPolar),
 });
 
+const stationInfo = new StationInfo();
+stationInfo.onClose = () => {
+  viewer.setSelectedStation(null);
+  stationInfo.show(null);
+};
+
 panel.appendChild(hud.el);
+panel.appendChild(stationInfo.el); // stacks under the info card (top-left)
 app.appendChild(north.el);
 app.appendChild(scaleBar.el);
 app.appendChild(viewCube.el);
@@ -74,6 +83,7 @@ viewer.onCameraChange = () => {
 viewer.onLegendChange = (spec) => legend.setSpec(spec);
 // Plan view forces (and locks) orthographic; keep the projection toggle in sync.
 viewer.onPlanModeChange = (inPlan) => controls.setProjectionState(viewer.projectionMode, inPlan);
+viewer.onPick = (id) => stationInfo.show(id);
 
 let hasModel = false;
 
@@ -82,6 +92,8 @@ function loadFile(filename: string, buffer: ArrayBuffer): void {
     const model = parseCaveFile(filename, buffer);
     viewer.setModel(model);
     hud.update(model);
+    stationInfo.setData(model, entranceDistances(model).distance);
+    stationInfo.show(null); // clear any prior selection
     hasModel = model.legs.length > 0;
     controlsHost.style.display = hasModel ? "" : "none";
     viewCube.el.style.display = hasModel ? "" : "none";
@@ -89,6 +101,7 @@ function loadFile(filename: string, buffer: ArrayBuffer): void {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     hud.showError(message);
+    stationInfo.show(null);
     controlsHost.style.display = "none";
     viewCube.el.style.display = "none";
     legend.setSpec({ kind: "hidden" });
@@ -149,6 +162,7 @@ function applyUnits(next: UnitSystem): void {
   units = next;
   hud.setUnits(next);
   scaleBar.setUnits(next);
+  stationInfo.setUnits(next);
   unitsBtn.textContent = next === "imperial" ? "Units: Imperial" : "Units: Metric";
 }
 applyUnits(units);
