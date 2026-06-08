@@ -22,12 +22,11 @@ export interface ControlsInitial {
   wallsVisible: boolean;
 }
 
+// Quick view shortcuts. Cardinal elevations now live on the ViewCube (drag to
+// orbit, click a face); these two cover the common "straight down" and "oblique"
+// framings.
 const VIEW_BUTTONS: Array<{ view: PresetView; label: string; title: string }> = [
   { view: "plan", label: "Plan", title: "Plan view (looking down, North up)" },
-  { view: "N", label: "N", title: "Elevation from the North" },
-  { view: "S", label: "S", title: "Elevation from the South" },
-  { view: "E", label: "E", title: "Elevation from the East" },
-  { view: "W", label: "W", title: "Elevation from the West" },
   { view: "iso", label: "3D", title: "Oblique 3D view" },
 ];
 

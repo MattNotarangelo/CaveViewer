@@ -242,6 +242,59 @@ export class Viewer {
     this.frame(dir, up);
   }
 
+  /**
+   * Frame the cave looking from an arbitrary world direction (target -> camera).
+   * Used by the ViewCube's face clicks. Near-vertical directions are framed
+   * North-up (like plan); all others use world-up.
+   */
+  snapToDirection(dir: THREE.Vector3): void {
+    if (!this.model) return;
+    const n = dir.clone().normalize();
+    const up = Math.abs(n.y) > 0.99 ? NORTH_UP : WORLD_UP;
+    this.frame(n, up);
+  }
+
+  /**
+   * Orbit the camera around the target by the given angle deltas (radians).
+   * Drives free rotation from the ViewCube drag. Always orbits in the world-up
+   * frame, so it first restores a vertical up if a North-up view was active.
+   */
+  orbit(deltaAzimuth: number, deltaPolar: number): void {
+    if (!this.model) return;
+    const cam = this.activeCam;
+    if (cam.up.distanceToSquared(WORLD_UP) > 1e-6) {
+      cam.up.copy(WORLD_UP);
+      this.syncControlsUp(WORLD_UP);
+    }
+    const target = this.controls.target;
+    const offset = cam.position.clone().sub(target);
+    const s = new THREE.Spherical().setFromVector3(offset);
+    s.theta -= deltaAzimuth;
+    s.phi = Math.max(0.05, Math.min(Math.PI - 0.05, s.phi - deltaPolar));
+    offset.setFromSpherical(s);
+    cam.position.copy(target).add(offset);
+    this.controls.update();
+  }
+
+  /**
+   * OrbitControls captures its up-axis frame (`_quat`) once at construction, so
+   * when the camera up changes (e.g. North-up plan) a straight-down view lands
+   * on the gimbal pole and inherits stale azimuth as roll — the "random" plan
+   * rotation. Re-derive that frame from the current up so every snap is
+   * deterministic. Reaches into a private field; guarded so a three.js rename
+   * degrades gracefully rather than throwing.
+   */
+  private syncControlsUp(up: THREE.Vector3): void {
+    const c = this.controls as unknown as {
+      _quat?: THREE.Quaternion;
+      _quatInverse?: THREE.Quaternion;
+    };
+    if (c._quat && c._quatInverse) {
+      c._quat.setFromUnitVectors(up, WORLD_UP);
+      c._quatInverse.copy(c._quat).invert();
+    }
+  }
+
   setProjection(mode: Projection): void {
     if (mode === this.projection) return;
     const dir = this.currentDir();
@@ -268,6 +321,7 @@ export class Viewer {
     const ndir = dir.clone().normalize();
     const cam = this.activeCam;
     cam.up.copy(up);
+    this.syncControlsUp(up);
 
     if (cam instanceof THREE.PerspectiveCamera) {
       const fov = (cam.fov * Math.PI) / 180;

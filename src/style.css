@@ -240,7 +240,7 @@ body {
 
 .controls-views {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 4px;
 }
 
@@ -363,6 +363,17 @@ body {
   font-size: 13px;
   color: var(--fg-dim);
   font-variant-numeric: tabular-nums;
+}
+
+/* --- ViewCube (bottom-right) --- */
+.viewcube {
+  position: absolute;
+  bottom: 18px;
+  right: 18px;
+  width: 96px;
+  height: 96px;
+  z-index: 10;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.35));
 }
 
 /* --- North indicator (top-right) --- */

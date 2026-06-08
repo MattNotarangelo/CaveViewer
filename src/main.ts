@@ -10,6 +10,7 @@ import { NorthIndicator } from "./viewer/northIndicator";
 import { ScaleBar } from "./viewer/scaleBar";
 import { Hud } from "./ui/hud";
 import { ControlsPanel } from "./ui/controls";
+import { ViewCube } from "./viewer/viewCube";
 import type { UnitSystem } from "./ui/units";
 
 const app = document.getElementById("app");
@@ -33,10 +34,17 @@ const hud = new Hud();
 const legend = new Legend();
 const north = new NorthIndicator();
 const scaleBar = new ScaleBar();
+const viewCube = new ViewCube({
+  getQuaternion: () => viewer.camera3.quaternion,
+  onSnap: (dir) => viewer.snapToDirection(dir),
+  onOrbit: (dAz, dPolar) => viewer.orbit(dAz, dPolar),
+});
 
 panel.appendChild(hud.el);
 app.appendChild(north.el);
 app.appendChild(scaleBar.el);
+app.appendChild(viewCube.el);
+viewCube.el.style.display = "none"; // shown once a model loads
 hud.showWelcome();
 
 // View controls panel (hidden until a model loads).
@@ -74,11 +82,13 @@ function loadFile(filename: string, buffer: ArrayBuffer): void {
     hud.update(model);
     hasModel = model.legs.length > 0;
     controlsHost.style.display = hasModel ? "" : "none";
+    viewCube.el.style.display = hasModel ? "" : "none";
     snapBtn.disabled = !hasModel;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     hud.showError(message);
     controlsHost.style.display = "none";
+    viewCube.el.style.display = "none";
     legend.setSpec({ kind: "hidden" });
     scaleBar.update(NaN);
   }

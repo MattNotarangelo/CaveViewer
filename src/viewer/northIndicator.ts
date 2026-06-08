@@ -24,6 +24,11 @@ export class NorthIndicator {
 
   /** Update the needle from the current camera and orbit target. */
   update(camera: THREE.Camera, target: THREE.Vector3): void {
+    // A preset view teleports the camera, so this can fire before the renderer
+    // refreshes the camera matrices — recompute them here or we'd project North
+    // through the *previous* frame's orientation (stale, wrong-pointing needle).
+    camera.updateMatrixWorld();
+    camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
     // Project the target and a point one unit north of it into NDC, then take
     // the screen-space direction between them.
     this.tmpA.copy(target).project(camera);
