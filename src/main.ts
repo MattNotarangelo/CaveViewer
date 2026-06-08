@@ -14,6 +14,7 @@ import { ControlsPanel } from "./ui/controls";
 import { StationInfo } from "./ui/stationInfo";
 import { StationSearch } from "./ui/stationSearch";
 import { MeasurePanel } from "./ui/measurePanel";
+import { SurveyTreePanel } from "./ui/surveyTreePanel";
 import { ViewCube } from "./viewer/viewCube";
 import type { UnitSystem } from "./ui/units";
 
@@ -87,8 +88,12 @@ const controls = new ControlsPanel(
     verticalScale: viewer.verticalExaggeration,
   },
 );
+const surveyTree = new SurveyTreePanel();
+surveyTree.onChange = (hidden) => viewer.setHiddenSurveys(hidden);
+
 controlsHost.appendChild(search.el); // finder sits above the view controls
 controlsHost.appendChild(controls.el);
+controlsHost.appendChild(surveyTree.el); // per-series visibility
 controlsHost.appendChild(legend.el); // stacks below the controls (no overlap)
 controlsHost.style.display = "none";
 
@@ -126,6 +131,7 @@ function loadFile(filename: string, buffer: ArrayBuffer): void {
     stationInfo.show(null); // clear any prior selection
     search.setModel(model);
     measurePanel.setModel(model);
+    surveyTree.setModel(model);
     setMeasureMode(false); // a fresh cave starts with the tool off
     hasModel = model.legs.length > 0;
     controlsHost.style.display = hasModel ? "" : "none";

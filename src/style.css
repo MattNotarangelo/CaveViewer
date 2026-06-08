@@ -349,6 +349,35 @@ body {
   color: var(--fg-dim);
 }
 
+/* --- Survey tree --- */
+.survey-tree {
+  gap: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.survey-tree-body {
+  font-size: 13px;
+}
+
+.survey-tree-children {
+  margin-left: 14px;
+  border-left: 1px solid var(--panel-border);
+  padding-left: 6px;
+}
+
+.survey-tree details > summary {
+  list-style: revert;
+  cursor: pointer;
+}
+
+.survey-tree-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
 /* --- Scale bar (bottom-left) --- */
 .scalebar {
   position: absolute;

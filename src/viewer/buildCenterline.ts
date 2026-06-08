@@ -13,6 +13,7 @@ import {
   legendSpecFor,
 } from "./coloring";
 import { surveyToThree } from "./coords";
+import { isLegHidden } from "./surveyTree";
 
 export interface LegVisibility {
   splay: boolean;
@@ -23,6 +24,8 @@ export interface LegVisibility {
 export interface CenterlineOptions {
   colorMode: ColorMode;
   show: LegVisibility;
+  /** Survey paths toggled off in the survey tree (with their descendants). */
+  hiddenSurveys?: ReadonlySet<string>;
 }
 
 export interface CenterlineGeometry {
@@ -37,6 +40,8 @@ export function buildCenterline(
 ): CenterlineGeometry {
   const data = prepareColorData(model, options.colorMode);
   const { show } = options;
+  const hidden = options.hiddenSurveys;
+  const sep = model.metadata.separator || ".";
 
   const positions: number[] = [];
   const colors: number[] = [];
@@ -46,6 +51,7 @@ export function buildCenterline(
     if (leg.flags.splay && !show.splay) continue;
     if (leg.flags.surface && !show.surface) continue;
     if (leg.flags.duplicate && !show.duplicate) continue;
+    if (hidden && isLegHidden(leg.survey, hidden, sep)) continue;
 
     const a = model.stations[leg.from];
     const b = model.stations[leg.to];

@@ -70,6 +70,7 @@ export class Viewer {
   private lastPointer: { pointerId: number; clientX: number; clientY: number } | null = null;
   private colorMode: ColorMode = "height";
   private legVisibility: LegVisibility = { splay: false, surface: true, duplicate: true };
+  private hiddenSurveys: ReadonlySet<string> = new Set();
   private legend: LegendSpec = { kind: "hidden" };
   private readonly resizeObserver: ResizeObserver;
   private disposed = false;
@@ -157,6 +158,7 @@ export class Viewer {
   setModel(model: CaveModel): void {
     this.model = model;
     this.modelBox = this.computeBox(model);
+    this.hiddenSurveys = new Set(); // survey visibility is per-model
     this.clearMarker(); // selection + marker belong to the previous model
     this.clearMeasure();
     this.buildWalls(model); // .lox passage-wall mesh (if any); independent of colour mode
@@ -254,6 +256,12 @@ export class Viewer {
     this.rebuild();
   }
 
+  /** Hide the given survey paths (and their descendants) from the centreline. */
+  setHiddenSurveys(hidden: ReadonlySet<string>): void {
+    this.hiddenSurveys = hidden;
+    this.rebuild();
+  }
+
   get legVisibilityState(): Readonly<LegVisibility> {
     return this.legVisibility;
   }
@@ -268,6 +276,7 @@ export class Viewer {
     const { geometry, segmentCount, legend } = buildCenterline(this.model, {
       colorMode: this.colorMode,
       show: this.legVisibility,
+      hiddenSurveys: this.hiddenSurveys,
     });
     this.legend = legend;
     this.onLegendChange?.(legend);

@@ -58,6 +58,7 @@ interface LoxShot {
   from: number;
   to: number;
   flags: number;
+  surveyId: number;
 }
 
 export function parseTherionLox(buffer: ArrayBuffer): CaveModel {
@@ -144,9 +145,9 @@ export function parseTherionLox(buffer: ArrayBuffer): CaveModel {
           p += 8 * 8; // fLRUD[4] + tLRUD[4] = 8 doubles, unused
           const flags = u32();
           u32(); // sectionType
-          u32(); // surveyId
+          const surveyId = u32();
           p += 8; // threshold (double)
-          loxShots.push({ from, to, flags });
+          loxShots.push({ from, to, flags, surveyId });
         }
         break;
 
@@ -242,7 +243,10 @@ function assemble(
     flags.surface = (sh.flags & SH_FLAG_SURFACE) !== 0;
     flags.duplicate = (sh.flags & SH_FLAG_DUPLICATE) !== 0;
     flags.splay = (sh.flags & SH_FLAG_SPLAY) !== 0;
-    legs.push({ from, to, flags });
+    const leg: Leg = { from, to, flags };
+    const survey = surveyPath(surveys, sh.surveyId);
+    if (survey) leg.survey = survey;
+    legs.push(leg);
   }
 
   const bounds = computeBounds(stations, wallPositions);
