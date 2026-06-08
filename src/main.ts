@@ -77,12 +77,14 @@ const controls = new ControlsPanel(
     onColorMode: (m) => viewer.setColorMode(m),
     onLegVisibility: (show) => viewer.setLegVisibility(show),
     onWallsVisible: (visible) => viewer.setWallsVisible(visible),
+    onVerticalScale: (scale) => viewer.setVerticalScale(scale),
   },
   {
     projection: viewer.projectionMode,
     colorMode: viewer.colorModeId,
     show: viewer.legVisibilityState,
     wallsVisible: viewer.wallsVisibleState,
+    verticalScale: viewer.verticalExaggeration,
   },
 );
 controlsHost.appendChild(search.el); // finder sits above the view controls

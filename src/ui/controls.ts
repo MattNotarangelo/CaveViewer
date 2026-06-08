@@ -13,6 +13,7 @@ export interface ControlsCallbacks {
   onColorMode: (m: ColorMode) => void;
   onLegVisibility: (show: LegVisibility) => void;
   onWallsVisible: (visible: boolean) => void;
+  onVerticalScale: (scale: number) => void;
 }
 
 export interface ControlsInitial {
@@ -20,6 +21,7 @@ export interface ControlsInitial {
   colorMode: ColorMode;
   show: LegVisibility;
   wallsVisible: boolean;
+  verticalScale: number;
 }
 
 // Quick view shortcuts. Cardinal elevations now live on the ViewCube (drag to
@@ -118,7 +120,26 @@ export class ControlsPanel {
       wallsWrap,
     );
 
-    this.el.append(viewRow, projRow, colourRow, showRow);
+    // Vertical exaggeration slider.
+    const vexRow = document.createElement("label");
+    vexRow.className = "controls-row controls-select";
+    const vexLabel = document.createElement("span");
+    const fmtVex = (v: number): string => `Vertical exaggeration ×${v}`;
+    vexLabel.textContent = fmtVex(initial.verticalScale);
+    const vex = document.createElement("input");
+    vex.type = "range";
+    vex.min = "1";
+    vex.max = "8";
+    vex.step = "0.5";
+    vex.value = String(initial.verticalScale);
+    vex.addEventListener("input", () => {
+      const v = parseFloat(vex.value);
+      vexLabel.textContent = fmtVex(v);
+      cb.onVerticalScale(v);
+    });
+    vexRow.append(vexLabel, vex);
+
+    this.el.append(viewRow, projRow, colourRow, showRow, vexRow);
   }
 
   /**

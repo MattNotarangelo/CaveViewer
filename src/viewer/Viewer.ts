@@ -48,6 +48,11 @@ const PICK_TOLERANCE_PX = 14;
 
 export class Viewer {
   private readonly scene = new THREE.Scene();
+  // Holds the cave geometry (lines + walls); its Y-scale is the vertical
+  // exaggeration. Markers/measure live outside it so they stay round and are
+  // positioned at the exaggerated coordinates directly.
+  private readonly modelGroup = new THREE.Group();
+  private verticalScale = 1;
   private readonly perspCam: THREE.PerspectiveCamera;
   private readonly orthoCam: THREE.OrthographicCamera;
   private projection: Projection = "perspective";
@@ -98,6 +103,7 @@ export class Viewer {
 
   constructor(private readonly container: HTMLElement) {
     this.scene.background = new THREE.Color(0x10131a);
+    this.scene.add(this.modelGroup);
 
     // Lighting affects only lit materials (the .lox wall mesh); the fat-line
     // centreline is unlit, so these are harmless when no walls are present.
@@ -202,7 +208,7 @@ export class Viewer {
     });
     this.walls = new THREE.Mesh(geometry, material);
     this.walls.visible = this.wallsVisible;
-    this.scene.add(this.walls);
+    this.modelGroup.add(this.walls);
   }
 
   /** Show or hide the .lox passage-wall mesh. */
@@ -227,7 +233,7 @@ export class Viewer {
 
   private clearWalls(): void {
     if (this.walls) {
-      this.scene.remove(this.walls);
+      this.modelGroup.remove(this.walls);
       this.walls.geometry.dispose();
       (this.walls.material as THREE.Material).dispose();
       this.walls = null;
@@ -271,7 +277,7 @@ export class Viewer {
     }
     this.lines = new LineSegments2(geometry, this.material);
     this.lines.computeLineDistances();
-    this.scene.add(this.lines);
+    this.modelGroup.add(this.lines);
   }
 
   // --- Camera framing ---
@@ -279,6 +285,39 @@ export class Viewer {
   /** Frame the whole cave from the default 3D viewpoint. */
   fitToView(): void {
     this.setView("iso");
+  }
+
+  /** The model's bounding box with vertical exaggeration applied (rendered extent). */
+  private scaledModelBox(): THREE.Box3 {
+    const b = this.modelBox.clone();
+    b.min.y *= this.verticalScale;
+    b.max.y *= this.verticalScale;
+    return b;
+  }
+
+  get verticalExaggeration(): number {
+    return this.verticalScale;
+  }
+
+  /**
+   * Stretch the cave vertically by `scale` (1 = true scale). Geometry scales via
+   * a group; markers/measurements reposition to the exaggerated coordinates, and
+   * the framed feature is tracked so the view doesn't jump.
+   */
+  setVerticalScale(scale: number): void {
+    const next = Math.max(1, Math.min(scale, 10));
+    if (next === this.verticalScale) return;
+    const ratio = next / this.verticalScale;
+    this.verticalScale = next;
+    this.modelGroup.scale.y = next;
+    if (this.selectedStation !== null) this.setSelectedStation(this.selectedStation);
+    for (let i = 0; i < this.measurePts.length; i++) {
+      this.measureMarkers[i]?.position.copy(this.stationPoint(this.measurePts[i]));
+    }
+    if (this.measurePts.length === 2) this.drawMeasureLine();
+    this.controls.target.y *= ratio;
+    this.activeCam.position.y *= ratio;
+    this.controls.update();
   }
 
   /** Snap to a preset viewpoint and frame the cave. */
@@ -422,8 +461,9 @@ export class Viewer {
   /** Position the active camera along `dir` (target -> camera) and fit `modelBox`. */
   private frame(dir: THREE.Vector3, up: THREE.Vector3): void {
     if (this.aspect() <= 0) return; // container not laid out yet; avoid NaN frustum
-    const center = this.modelBox.getCenter(new THREE.Vector3());
-    const size = this.modelBox.getSize(new THREE.Vector3());
+    const box = this.scaledModelBox(); // accounts for vertical exaggeration
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z, 1);
     const ndir = dir.clone().normalize();
     const cam = this.activeCam;
@@ -447,9 +487,9 @@ export class Viewer {
       const c = new THREE.Vector3();
       for (let i = 0; i < 8; i++) {
         c.set(
-          i & 1 ? this.modelBox.max.x : this.modelBox.min.x,
-          i & 2 ? this.modelBox.max.y : this.modelBox.min.y,
-          i & 4 ? this.modelBox.max.z : this.modelBox.min.z,
+          i & 1 ? box.max.x : box.min.x,
+          i & 2 ? box.max.y : box.min.y,
+          i & 4 ? box.max.z : box.min.z,
         ).sub(center);
         halfW = Math.max(halfW, Math.abs(c.dot(right)));
         halfH = Math.max(halfH, Math.abs(c.dot(trueUp)));
@@ -602,7 +642,7 @@ export class Viewer {
     for (const s of this.model.stations) {
       if (s.flags.anonymous) continue; // wall/splay points aren't meaningful to pick
       const [x, y, z] = surveyToThree(s.x, s.y, s.z);
-      v.set(x, y, z).project(cam);
+      v.set(x, y * this.verticalScale, z).project(cam);
       if (v.z < -1 || v.z > 1) continue; // behind camera / clipped
       const sx = (v.x * 0.5 + 0.5) * rect.width;
       const sy = (-v.y * 0.5 + 0.5) * rect.height;
@@ -649,11 +689,11 @@ export class Viewer {
     return mesh;
   }
 
-  /** World-space position of a station (Three coords). */
+  /** Rendered world position of a station (Three coords, vertical exaggeration applied). */
   private stationPoint(id: number): THREE.Vector3 {
     const s = this.model!.stations[id];
     const [x, y, z] = surveyToThree(s.x, s.y, s.z);
-    return new THREE.Vector3(x, y, z);
+    return new THREE.Vector3(x, y * this.verticalScale, z);
   }
 
   /** Enter/leave the measure tool; clears any prior measurement and selection. */
@@ -778,7 +818,7 @@ export class Viewer {
 
   private clearLines(): void {
     if (this.lines) {
-      this.scene.remove(this.lines);
+      this.modelGroup.remove(this.lines);
       this.lines.geometry.dispose();
       this.lines = null;
     }
