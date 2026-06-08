@@ -238,6 +238,12 @@ body {
   border-color: var(--accent);
 }
 
+.controls button:disabled {
+  opacity: 0.45;
+  cursor: default;
+  border-color: var(--panel-border);
+}
+
 .controls-views {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

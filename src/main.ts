@@ -72,6 +72,8 @@ viewer.onCameraChange = () => {
   scaleBar.update(viewer.metresPerPixel());
 };
 viewer.onLegendChange = (spec) => legend.setSpec(spec);
+// Plan view forces (and locks) orthographic; keep the projection toggle in sync.
+viewer.onPlanModeChange = (inPlan) => controls.setProjectionState(viewer.projectionMode, inPlan);
 
 let hasModel = false;
 

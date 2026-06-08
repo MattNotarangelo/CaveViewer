@@ -121,6 +121,17 @@ export class ControlsPanel {
     this.el.append(viewRow, projRow, colourRow, showRow);
   }
 
+  /**
+   * Reflect the viewer's projection state and lock the toggle while plan view
+   * forces orthographic (perspective is meaningless looking straight down).
+   */
+  setProjectionState(projection: Projection, locked: boolean): void {
+    this.projection = projection;
+    this.updateProjLabel();
+    this.projBtn.disabled = locked;
+    if (locked) this.projBtn.title = "Plan view is locked to orthographic (true-scale).";
+  }
+
   private updateProjLabel(): void {
     const isPersp = this.projection === "perspective";
     this.projBtn.textContent = isPersp ? "View: Perspective" : "View: Orthographic";

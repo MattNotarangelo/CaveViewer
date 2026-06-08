@@ -20,11 +20,18 @@ export type Projection = "perspective" | "orthographic";
 export type PresetView = "plan" | "N" | "S" | "E" | "W" | "iso";
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
-const NORTH_UP = new THREE.Vector3(0, 0, -1); // for plan view, North points "up"
+
+// Plan view looks (almost) straight down on a vertical-axis frame. The tiny tilt
+// toward +Z (South) keeps the up-vector from being parallel to the view (which
+// would make lookAt / the ortho fit degenerate) and orients North to the top of
+// the screen. It's imperceptible — and under orthographic projection (which plan
+// is locked to) it has no visual effect at all.
+const PLAN_TILT = 0.012; // radians (~0.7°)
+const PLAN_DIR = new THREE.Vector3(0, Math.cos(PLAN_TILT), Math.sin(PLAN_TILT));
 
 // Camera direction (target -> camera) and up vector per preset view.
 const VIEW_DIRS: Record<PresetView, { dir: THREE.Vector3; up: THREE.Vector3 }> = {
-  plan: { dir: new THREE.Vector3(0, 1, 0), up: NORTH_UP },
+  plan: { dir: PLAN_DIR, up: WORLD_UP },
   N: { dir: new THREE.Vector3(0, 0, -1), up: WORLD_UP },
   S: { dir: new THREE.Vector3(0, 0, 1), up: WORLD_UP },
   E: { dir: new THREE.Vector3(1, 0, 0), up: WORLD_UP },
@@ -56,11 +63,17 @@ export class Viewer {
   private legend: LegendSpec = { kind: "hidden" };
   private readonly resizeObserver: ResizeObserver;
   private disposed = false;
+  // Plan view is locked top-down + orthographic; remember the projection it was
+  // entered from so leaving plan can restore it.
+  private inPlan = false;
+  private prePlanProjection: Projection | null = null;
 
   /** Fires whenever the camera moves (north indicator, scale bar). */
   onCameraChange?: () => void;
   /** Fires when the legend should change (colour mode / model change). */
   onLegendChange?: (spec: LegendSpec) => void;
+  /** Fires when plan view is entered/left, so the UI can lock the projection toggle. */
+  onPlanModeChange?: (inPlan: boolean) => void;
 
   constructor(private readonly container: HTMLElement) {
     this.scene.background = new THREE.Color(0x10131a);
@@ -238,29 +251,41 @@ export class Viewer {
   /** Snap to a preset viewpoint and frame the cave. */
   setView(view: PresetView): void {
     if (!this.model) return;
+    if (view === "plan") {
+      this.enterPlanView();
+      return;
+    }
+    this.exitPlanView(true);
     const { dir, up } = VIEW_DIRS[view];
     this.frame(dir, up);
   }
 
   /**
    * Frame the cave looking from an arbitrary world direction (target -> camera).
-   * Used by the ViewCube's face clicks. Near-vertical directions are framed
-   * North-up (like plan); all others use world-up.
+   * Used by the ViewCube's face clicks. The Top face enters locked plan view;
+   * other faces are normal snaps (purely-vertical ones get the same tiny tilt as
+   * plan so the up-vector stays well-defined).
    */
   snapToDirection(dir: THREE.Vector3): void {
     if (!this.model) return;
     const n = dir.clone().normalize();
-    const up = Math.abs(n.y) > 0.99 ? NORTH_UP : WORLD_UP;
-    this.frame(n, up);
+    if (n.y > 0.99) {
+      this.enterPlanView();
+      return;
+    }
+    this.exitPlanView(true);
+    if (Math.abs(n.y) > 0.99) n.set(0, n.y * Math.cos(PLAN_TILT), Math.sin(PLAN_TILT)).normalize();
+    this.frame(n, WORLD_UP);
   }
 
   /**
    * Orbit the camera around the target by the given angle deltas (radians).
-   * Drives free rotation from the ViewCube drag. Always orbits in the world-up
-   * frame, so it first restores a vertical up if a North-up view was active.
+   * Drives free rotation from the ViewCube drag, which always leaves the locked
+   * plan view and orbits freely in the world-up frame.
    */
   orbit(deltaAzimuth: number, deltaPolar: number): void {
     if (!this.model) return;
+    this.exitPlanView(false); // keep projection; a free drag shouldn't snap projection
     const cam = this.activeCam;
     if (cam.up.distanceToSquared(WORLD_UP) > 1e-6) {
       cam.up.copy(WORLD_UP);
@@ -274,6 +299,43 @@ export class Viewer {
     offset.setFromSpherical(s);
     cam.position.copy(target).add(offset);
     this.controls.update();
+  }
+
+  /** Whether plan view (locked top-down + orthographic) is active. */
+  get planLocked(): boolean {
+    return this.inPlan;
+  }
+
+  /**
+   * Enter plan view: force orthographic, frame top-down North-up, then lock the
+   * polar angle so dragging can only spin the map about vertical (never tilt
+   * out of top-down). Pan/zoom and the global drag toggle are otherwise normal.
+   */
+  private enterPlanView(): void {
+    const wasPlan = this.inPlan;
+    if (!wasPlan) {
+      this.prePlanProjection = this.projection;
+      this.inPlan = true;
+    }
+    if (this.projection !== "orthographic") this.applyProjection("orthographic");
+    this.frame(VIEW_DIRS.plan.dir, VIEW_DIRS.plan.up);
+    this.controls.minPolarAngle = PLAN_TILT;
+    this.controls.maxPolarAngle = PLAN_TILT;
+    if (!wasPlan) this.onPlanModeChange?.(true);
+  }
+
+  /** Leave plan view: unlock the polar angle and optionally restore projection. */
+  private exitPlanView(restoreProjection: boolean): void {
+    if (!this.inPlan) return;
+    this.inPlan = false;
+    this.controls.minPolarAngle = 0;
+    this.controls.maxPolarAngle = Math.PI;
+    const restore = this.prePlanProjection;
+    this.prePlanProjection = null;
+    if (restoreProjection && restore && restore !== this.projection) {
+      this.applyProjection(restore);
+    }
+    this.onPlanModeChange?.(false);
   }
 
   /**
@@ -296,7 +358,19 @@ export class Viewer {
   }
 
   setProjection(mode: Projection): void {
+    // Plan view is locked to orthographic — perspective looking straight down is
+    // meaningless (no foreshortening to convey).
+    if (this.inPlan && mode === "perspective") return;
     if (mode === this.projection) return;
+    this.applyProjection(mode);
+    if (this.inPlan) {
+      this.controls.minPolarAngle = PLAN_TILT;
+      this.controls.maxPolarAngle = PLAN_TILT;
+    }
+  }
+
+  /** Swap projection, rebuilding controls and re-framing from the current view. */
+  private applyProjection(mode: Projection): void {
     const dir = this.currentDir();
     const up = this.activeCam.up.clone();
     const target = this.controls.target.clone();
