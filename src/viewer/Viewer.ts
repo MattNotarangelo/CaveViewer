@@ -74,6 +74,7 @@ export class Viewer {
   private legend: LegendSpec = { kind: "hidden" };
   private readonly resizeObserver: ResizeObserver;
   private disposed = false;
+  private needsRender = true; // draw the first frame; set true on any visual change
   // Plan view is locked top-down + orthographic; remember the projection it was
   // entered from so leaving plan can restore it.
   private inPlan = false;
@@ -174,6 +175,7 @@ export class Viewer {
       (this.marker.material as THREE.Material).dispose();
       this.marker = null;
     }
+    this.requestRender();
   }
 
   /**
@@ -211,12 +213,14 @@ export class Viewer {
     this.walls = new THREE.Mesh(geometry, material);
     this.walls.visible = this.wallsVisible;
     this.modelGroup.add(this.walls);
+    this.requestRender();
   }
 
   /** Show or hide the .lox passage-wall mesh. */
   setWallsVisible(visible: boolean): void {
     this.wallsVisible = visible;
     if (this.walls) this.walls.visible = visible;
+    this.requestRender();
   }
 
   get wallsVisibleState(): boolean {
@@ -231,6 +235,7 @@ export class Viewer {
   /** Sets the scene clear colour so the 3D view matches the UI theme. */
   setBackground(color: number): void {
     (this.scene.background as THREE.Color).set(color);
+    this.requestRender();
   }
 
   private clearWalls(): void {
@@ -287,6 +292,7 @@ export class Viewer {
     this.lines = new LineSegments2(geometry, this.material);
     this.lines.computeLineDistances();
     this.modelGroup.add(this.lines);
+    this.requestRender();
   }
 
   // --- Camera framing ---
@@ -326,6 +332,7 @@ export class Viewer {
     if (this.measurePts.length === 2) this.drawMeasureLine();
     this.controls.target.y *= ratio;
     this.activeCam.position.y *= ratio;
+    this.requestRender();
     this.controls.update();
   }
 
@@ -669,6 +676,7 @@ export class Viewer {
     this.selectedStation = id;
     if (id === null || !this.model) {
       if (this.marker) this.marker.visible = false;
+      this.requestRender();
       return;
     }
     if (!this.marker) {
@@ -695,6 +703,7 @@ export class Viewer {
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), mat);
     mesh.renderOrder = 999; // draw over walls/lines
     this.scene.add(mesh);
+    this.requestRender();
     return mesh;
   }
 
@@ -738,6 +747,7 @@ export class Viewer {
     this.measureLine = new THREE.Line(geom, mat);
     this.measureLine.renderOrder = 998;
     this.scene.add(this.measureLine);
+    this.requestRender();
   }
 
   private clearMeasure(): void {
@@ -757,6 +767,7 @@ export class Viewer {
       (this.measureLine.material as THREE.Material).dispose();
       this.measureLine = null;
     }
+    this.requestRender();
   }
 
   /** Select a station and pan the camera to centre it (keeps zoom/orientation). */
@@ -796,7 +807,10 @@ export class Viewer {
     controls.dampingFactor = 0.08;
     this.controls = controls; // setLeftDragMode reads this.controls
     this.setLeftDragMode(this.leftDragMode);
-    controls.addEventListener("change", () => this.onCameraChange?.());
+    controls.addEventListener("change", () => {
+      this.onCameraChange?.();
+      this.needsRender = true;
+    });
     return controls;
   }
 
@@ -831,6 +845,7 @@ export class Viewer {
       this.lines.geometry.dispose();
       this.lines = null;
     }
+    this.requestRender();
   }
 
   private handleResize(): void {
@@ -847,13 +862,25 @@ export class Viewer {
     this.renderer.setSize(w, h);
     this.material.resolution.set(w, h);
     this.onCameraChange?.();
+    this.requestRender();
   }
 
+  // On-demand rendering: only draw when something changed. OrbitControls.update()
+  // returns true while the camera is moving (incl. damping settling); other state
+  // changes set `needsRender`. Keeps the GPU idle when the view is static.
   private animate = (): void => {
     if (this.disposed) return;
     requestAnimationFrame(this.animate);
-    this.controls.update();
-    this.renderer.render(this.scene, this.activeCam);
+    const cameraMoved = this.controls.update();
+    if (cameraMoved || this.needsRender) {
+      this.renderer.render(this.scene, this.activeCam);
+      this.needsRender = false;
+    }
+  };
+
+  /** Mark the scene dirty so the next animation frame renders it. */
+  private requestRender = (): void => {
+    this.needsRender = true;
   };
 
   dispose(): void {

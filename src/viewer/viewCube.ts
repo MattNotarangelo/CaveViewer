@@ -35,6 +35,7 @@ export class ViewCube {
   private readonly raycaster = new THREE.Raycaster();
   private readonly cb: ViewCubeCallbacks;
   private disposed = false;
+  private lastQuat: THREE.Quaternion | null = null; // last rendered main-camera orientation
   private press: { x: number; y: number; lastX: number; lastY: number; dragging: boolean } | null =
     null;
 
@@ -99,9 +100,13 @@ export class ViewCube {
   private animate = (): void => {
     if (this.disposed) return;
     requestAnimationFrame(this.animate);
-    // Mirror the main camera: rotating world axes by the world->view rotation
-    // shows them oriented as the main camera sees them.
-    this.cube.quaternion.copy(this.cb.getQuaternion()).invert();
+    // Only redraw when the main camera's orientation changed — keeps the GPU
+    // idle when the view is static. Mirror it by rotating world axes by the
+    // world->view rotation so they appear as the main camera sees them.
+    const q = this.cb.getQuaternion();
+    if (this.lastQuat && q.equals(this.lastQuat)) return;
+    this.lastQuat = q.clone();
+    this.cube.quaternion.copy(q).invert();
     this.renderer.render(this.scene, this.camera);
   };
 
