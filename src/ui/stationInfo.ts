@@ -3,6 +3,7 @@
  * elevation, and geodesic distance from the entrance. Respects the unit system.
  */
 import type { CaveModel } from "../parser/index";
+import { escapeHtml } from "./escapeHtml";
 import { formatLength, toDisplayLength, unitLabel, type UnitSystem } from "./units";
 
 export class StationInfo {
@@ -74,11 +75,3 @@ export class StationInfo {
   }
 }
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;");
-}

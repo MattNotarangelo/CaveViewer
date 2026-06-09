@@ -2,6 +2,7 @@
  * The info panel: survey title, derived stats, and a privacy reassurance.
  */
 import { caveStats, type CaveModel } from "../parser/index";
+import { escapeHtml } from "./escapeHtml";
 import { formatLength, toDisplayLength, unitLabel, type UnitSystem } from "./units";
 
 const REPO_URL = "https://github.com/MattNotarangelo/CaveViewer";
@@ -71,11 +72,3 @@ export class Hud {
   }
 }
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;");
-}

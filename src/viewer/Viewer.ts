@@ -832,7 +832,11 @@ export class Viewer {
   }
 
   private drawMeasureLine(): void {
-    if (this.measureLine) this.scene.remove(this.measureLine);
+    if (this.measureLine) {
+      this.scene.remove(this.measureLine);
+      this.measureLine.geometry.dispose();
+      (this.measureLine.material as THREE.Material).dispose();
+    }
     const a = this.stationPoint(this.measurePts[0]);
     const b = this.stationPoint(this.measurePts[1]);
     const geom = new THREE.BufferGeometry().setFromPoints([a, b]);

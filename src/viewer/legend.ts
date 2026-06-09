@@ -4,6 +4,7 @@
  */
 import type { LegendSpec } from "./coloring";
 import { depthColorCss } from "./colormap";
+import { escapeHtml } from "../ui/escapeHtml";
 
 export class Legend {
   readonly el: HTMLElement;
@@ -22,18 +23,18 @@ export class Legend {
     this.el.style.display = "";
     if (spec.kind === "note") {
       this.el.innerHTML = `
-        <div class="legend-title">${spec.title}</div>
-        <div class="legend-note">${spec.text}</div>`;
+        <div class="legend-title">${escapeHtml(spec.title)}</div>
+        <div class="legend-note">${escapeHtml(spec.text)}</div>`;
       return;
     }
     this.el.innerHTML = `
-      <div class="legend-title">${spec.title}</div>
+      <div class="legend-title">${escapeHtml(spec.title)}</div>
       <div class="legend-body">
         <div class="legend-bar" style="background:${gradientCss()}"></div>
         <div class="legend-labels">
-          <span>${spec.hi}</span>
-          <span>${spec.mid}</span>
-          <span>${spec.lo}</span>
+          <span>${escapeHtml(spec.hi)}</span>
+          <span>${escapeHtml(spec.mid)}</span>
+          <span>${escapeHtml(spec.lo)}</span>
         </div>
       </div>`;
   }

@@ -158,6 +158,17 @@ export class ViewCube {
     dom.removeEventListener("pointerdown", this.onPointerDown);
     dom.removeEventListener("pointermove", this.onPointerMove);
     window.removeEventListener("pointerup", this.onPointerUp);
+    for (const m of this.cube.material as THREE.MeshLambertMaterial[]) {
+      m.map?.dispose();
+      m.dispose();
+    }
+    this.cube.geometry.dispose();
+    for (const child of this.cube.children) {
+      if (child instanceof THREE.LineSegments) {
+        child.geometry.dispose();
+        (child.material as THREE.Material).dispose();
+      }
+    }
     this.renderer.dispose();
     dom.remove();
   }

@@ -161,6 +161,14 @@ export function parseTherionLox(buffer: ArrayBuffer): CaveModel {
           const num3Angles = u32();
           const aPos = u32();
           u32(); // 3AnglesPtr.size
+          // Points/indices must lie within this chunk's data section; a
+          // corrupt or crafted file could otherwise read into neighbouring
+          // chunks or force a huge allocation.
+          if (pPos + numPoints * 24 > dataSize || aPos + num3Angles * 12 > dataSize) {
+            throw new TherionLoxParseError(
+              `Scrap mesh (${numPoints} points, ${num3Angles} triangles) overruns chunk data section of ${dataSize} bytes`,
+            );
+          }
           // Merge this scrap's mesh into the global wall buffers; triangle
           // indices are local to the scrap, so offset by the running vertex count.
           const base = wallPositions.length / 3;

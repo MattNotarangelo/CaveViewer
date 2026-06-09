@@ -3,6 +3,7 @@
  * and compass bearing between two picked stations. Respects the unit system.
  */
 import type { CaveModel } from "../parser/index";
+import { escapeHtml } from "./escapeHtml";
 import { formatLength, toDisplayLength, unitLabel, type UnitSystem } from "./units";
 
 export class MeasurePanel {
@@ -80,11 +81,3 @@ export class MeasurePanel {
   }
 }
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;");
-}

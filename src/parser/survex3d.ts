@@ -87,6 +87,11 @@ class LabelBuffer {
         `Label delta deletes ${del} bytes but only ${this.bytes.length} are buffered`,
       );
     }
+    // Real station labels are at most a few hundred bytes; a corrupt or
+    // crafted file could otherwise demand a near-4GB append.
+    if (add > 65535) {
+      throw new Survex3dParseError(`Label delta adds ${add} bytes (limit 65535)`);
+    }
     if (del > 0) this.bytes.length -= del;
     for (let i = 0; i < add; i++) this.bytes.push(cur.u8());
     return this.value();
