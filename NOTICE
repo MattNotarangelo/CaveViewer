@@ -23,6 +23,22 @@ These GPL files are aggregated with, not combined into, the MIT-licensed
 code; the application is not a derivative work of them.
 
 ----------------------------------------------------------------------
+Bundled example survey (public/system_migovec.3d)
+----------------------------------------------------------------------
+
+The "Load example cave" dataset is the Tolminski Migovec cave system,
+surveyed by the JSPDT and the Imperial College Caving Club (ICCC). The
+compiled Survex .3d model is published for public download by the project:
+
+  https://github.com/iccaving/migovec-survey-data
+  Viewer: https://iccaving.github.io/migovec-survey-data/
+
+Included here as an example dataset, with attribution to its surveyors. This
+is survey data (measurements), not software. The upstream repository does not
+state an explicit licence; redistribution terms should be confirmed with the
+ICCC / JSPDT before publishing this bundled copy.
+
+----------------------------------------------------------------------
 Runtime dependencies
 ----------------------------------------------------------------------
 

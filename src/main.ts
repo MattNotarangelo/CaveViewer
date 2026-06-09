@@ -180,9 +180,9 @@ measureBtn.addEventListener("click", () => setMeasureMode(!measureBtn.classList.
 measurePanel.onClose = () => setMeasureMode(false);
 exampleBtn.addEventListener("click", async () => {
   try {
-    const res = await fetch("./example-cave.lox");
+    const res = await fetch("./system_migovec.3d");
     if (!res.ok) throw new Error(`Example not found (HTTP ${res.status})`);
-    loadFile("example-cave.lox", await res.arrayBuffer());
+    loadFile("system_migovec.3d", await res.arrayBuffer());
   } catch (err) {
     hud.showError(err instanceof Error ? err.message : String(err));
   }
