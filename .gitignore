@@ -4,5 +4,7 @@ dist
 .DS_Store
 .vite
 .playwright-mcp
+# Claude Code session state (worktrees, local settings)
+.claude/
 # Browser-verification screenshots live at repo root; docs/ images are kept.
 /*.png
