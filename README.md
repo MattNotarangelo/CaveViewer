@@ -17,7 +17,8 @@ feature, not a limitation. The app deploys as a pure static site.
 | **1+** | Preset plan/elevation views, orthographic toggle, scale bar, colour modes (elevation / distance-from-entrance / gradient / survey / single), leg-type visibility toggles, PNG export _(ideas adopted from [CaveView.js](https://github.com/aardgoose/CaveView.js))_ | ✅ done |
 | **2** | **Compass `.plt`** (processed coordinates, LRUD, splays, multi-survey) | ✅ done |
 | **3** | **Therion `.lox`** + lit triangle-mesh passage walls (the modelled scrap surfaces); **LRUD passage tubes** reconstructed for `.3d`/`.plt` | ✅ done |
-| next | Colour by date; station labels; measurement tool; survey-tree show/hide; clipping plane / depth cursor; depth fog | planned |
+| **4** | **Interaction & UX**: ViewCube navigation (drag to orbit, click a face to snap); click a station for its details; hover labels + station finder; **measure tool** (straight-line / horizontal / vertical / bearing); **survey-tree show/hide**; **vertical exaggeration**; entrance & fixed-point markers; light/dark theme; metric/imperial units; render-on-demand (idle GPU) | ✅ done |
+| next | Colour by date; cross-sections from splays; clipping plane / depth cursor; depth fog | planned |
 
 ## Architecture
 
@@ -30,13 +31,21 @@ src/
     types.ts       # The CaveModel contract (see below)
     byteCursor.ts  # Little-endian binary reader with bounds checking
     survex3d.ts    # Survex .3d v8 parser
+    compassPlt.ts  # Compass .plt parser
+    therionLox.ts  # Therion .lox parser (centreline + scrap wall meshes)
     caveStats.ts   # Derived stats (total length, depth range, ...)
     index.ts       # parseCaveFile(filename, buffer) dispatcher + exports
   viewer/          # Three.js. Consumes a CaveModel; knows nothing about files.
-    Viewer.ts      # Scene, camera, OrbitControls, fat-line centreline, fit-to-view
-    buildCenterline.ts, colormap.ts, coords.ts, legend.ts, northIndicator.ts
+    Viewer.ts          # Scene, cameras, OrbitControls, picking, render-on-demand
+    buildCenterline.ts # Fat-line centreline (colour + leg/survey visibility)
+    buildLrudTubes.ts  # LRUD → passage tubes for .3d/.plt
+    coloring.ts, colormap.ts, coords.ts, legend.ts, scaleBar.ts
+    northIndicator.ts  # Compass needle
+    viewCube.ts        # Autodesk-style navigation cube
+    surveyTree.ts      # Survey-hierarchy build + leg-visibility logic (pure)
   ui/              # Vanilla DOM (framework-light by design)
-    hud.ts
+    hud.ts, controls.ts, units.ts
+    stationInfo.ts, stationSearch.ts, measurePanel.ts, surveyTreePanel.ts
   main.ts          # Wires parser → viewer → DOM
 ```
 
@@ -98,10 +107,12 @@ npm run build        # type-check then produce static site in dist/
 npm run preview      # serve the production build locally
 ```
 
-The "Load example cave" button loads `public/example-cave.lox` — a real Therion
-survey (a genuine cave, anonymised by replacing its name) included to
-demonstrate the viewer on real-world data, including the modelled passage-wall
-mesh that `.lox` carries.
+The "Load example cave" button loads `public/system_migovec.lox` — the Tolminski
+Migovec cave system (~47 km, 21k+ stations), surveyed by the JSPDT and Imperial
+College Caving Club and published openly by the [Migovec Resurvey
+Project](https://github.com/iccaving/migovec-survey-data). It exercises the
+viewer on a real, large survey, including the modelled passage-wall mesh that
+`.lox` carries. See [`NOTICE`](./NOTICE) for attribution.
 
 ### Testing — parser correctness is the whole ballgame
 
@@ -118,6 +129,12 @@ A plausible render is **not** proof the parser is correct; the numbers must matc
 - **Compass golden test** (`test/compassPlt.golden.test.ts`): parses a real `.plt`
   (`multisurvey.plt`) and asserts stations, legs (incl. splays), and LRUD against
   Survex's own decode of the same file (`multisurvey.dump`) — an independent oracle.
+- **Therion golden test** (`test/therionLox.golden.test.ts`): cross-checks the `.lox`
+  parse of a real cave against the same cave's `.3d`, so the reverse-engineered
+  binary layout is anchored to reference-tool output.
+- **Pure-logic unit tests** cover the non-parser building blocks too — unit
+  conversion/formatting (`test/units.test.ts`) and the survey-tree hierarchy +
+  leg-visibility logic (`test/surveyTree.test.ts`).
 
 ## Deploy — Cloudflare Pages
 
@@ -151,18 +168,31 @@ choice is remembered):
 - **Pan** (default, Google Earth–style): left-drag pans · right-drag orbits (rotate + tilt) · scroll zooms
 - **Orbit** (3D-viewer / Aven-style): left-drag orbits · right-drag pans · scroll zooms
 
+**ViewCube** (bottom-right): drag the cube to orbit, or click a face to snap to
+that view. Replaces dedicated cardinal-elevation buttons — the faces are labelled
+with the compass directions.
+
 **View controls** (panel, top-right):
 
-- **Preset views**: Plan (looking down, North up) and N/S/E/W elevations, plus 3D. <kbd>P</kbd> = plan.
-- **Projection**: toggle Perspective ⇄ Orthographic (true-scale plan/elevation).
+- **Quick views**: Plan (top-down, North up — locked to orthographic) and 3D. <kbd>P</kbd> = plan.
+- **Projection**: toggle Perspective ⇄ Orthographic (true-scale); locked to orthographic in plan view.
 - **Colour by**: elevation, distance-from-entrance, gradient (steepness), survey/series, or single colour. The legend adapts to the mode.
+- **Vertical exaggeration**: a 1×–8× slider to stretch deep caves vertically (no effect in plan).
 - **Show**: toggle splay / surface / duplicate legs, and the passage-wall mesh (Walls — Therion `.lox` scrap meshes, or tubes reconstructed from LRUD cross-sections for `.3d`/`.plt`).
+- **Surveys**: a collapsible tree to show/hide individual survey series.
+- **Find station…**: type to locate a station; choosing one pans to it and selects it.
+
+**Selecting & measuring:**
+
+- **Hover** a station to see its name; **click** it for a panel with name, position, elevation, and distance from the entrance. Entrances (green) and fixed points (amber) are marked.
+- **Measure**: toolbar toggle; click two stations for the straight-line / horizontal / vertical distance and compass bearing.
 
 **Toolbar** (bottom):
 
-- **Fit to view**: the "Fit view" button or press <kbd>F</kbd>
+- **Fit to view**: the "Fit view" button or press <kbd>F</kbd>.
 - **Save PNG**: download the current view as an image.
-- **Open a file**: drag-and-drop a `.3d` anywhere, or use "Open .3d file…"
+- **Units**: toggle metric ⇄ imperial. **Theme**: toggle dark ⇄ light. (Both remembered.)
+- **Open a file**: drag-and-drop a `.3d` / `.plt` / `.lox` anywhere, or use "Open file…".
 
 ## License
 
