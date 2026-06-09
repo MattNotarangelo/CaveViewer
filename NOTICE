@@ -1,26 +1,37 @@
 Cave Survey Viewer
 Copyright (c) 2026 Matt Notarangelo
-Licensed under the MIT License (see LICENSE).
+Licensed under the GNU Affero General Public License v3.0 or later
+(SPDX-License-Identifier: AGPL-3.0-or-later — see LICENSE).
 
 This product's source code and its built/distributed output (the `dist/`
-static site) are MIT-licensed and contain no third-party copyleft material.
+static site) are licensed under the AGPL-3.0-or-later. Anyone who distributes
+this software, or hosts a modified version of it as a network service, must
+make the complete corresponding source available under the same licence.
 
 ----------------------------------------------------------------------
 Third-party test vectors (NOT part of the distributed product)
 ----------------------------------------------------------------------
 
-The repository vendors a small number of reference test vectors from the
-Survex project (https://survex.com/), which is licensed under the GNU GPL
-v2 or later. These files are used ONLY by the test suite to validate parser
-interoperability against genuine reference-tool output. They are not imported
-by the application and are not included in the build output.
+The repository vendors a small number of reference test vectors used ONLY by
+the test suite to validate parser interoperability against genuine
+reference-tool output. They are not imported by the application and are not
+included in the build output.
 
   - test/fixtures/survex/   (Survex .3d files + dump3d output)
+    From the Survex project (https://survex.com/), GNU GPL v2 or later.
   - test/fixtures/compass/  (Compass .plt files + Survex's decode of them)
+    Decodes produced with Survex tooling, GNU GPL v2 or later.
+  - test/fixtures/therion/  (a real .lox/.3d survey pair used as a
+    cross-format oracle)
+    From https://github.com/tr1813/ultima-patagonia-topo; the upstream
+    repository does not state an explicit licence. Vendored solely as small
+    interop test vectors (survey data, not software).
 
 See the PROVENANCE.md file in each directory for exact sources and rationale.
-These GPL files are aggregated with, not combined into, the MIT-licensed
-code; the application is not a derivative work of them.
+The Survex-derived files are GPL-v2-or-later, which is licence-compatible
+with this project's AGPL-3.0-or-later (via the "or any later version"
+upgrade path); in any case they are aggregated with, not combined into, the
+application code, and the application is not a derivative work of them.
 
 ----------------------------------------------------------------------
 Bundled example survey (public/system_migovec.lox)
@@ -44,4 +55,5 @@ Runtime dependencies
 
   - three (3D rendering) — MIT License
 
-Build/test tooling (Vite, TypeScript, Vitest, tsx) is MIT-licensed.
+MIT-licensed dependencies may be incorporated into AGPL-licensed works.
+Build/test tooling (Vite, TypeScript, Vitest) is MIT-licensed.

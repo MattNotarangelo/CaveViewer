@@ -205,8 +205,11 @@ make its complete corresponding source code available under the same licence. In
 short — no closed-source forks, and no closed-source hosted deployments.
 
 **Test vectors:** `test/fixtures/survex/` and `test/fixtures/compass/` vendor small
-reference test vectors from the [Survex](https://survex.com/) project (GPL v2+),
-used **only** by the test suite to validate parser interoperability against genuine
-reference-tool output. They are not imported by the app and are not in the build
-output (mere aggregation, not a derivative work). See each directory's
+reference test vectors from the [Survex](https://survex.com/) project (GPL v2+,
+which is licence-compatible with AGPL-3.0), used **only** by the test suite to
+validate parser interoperability against genuine reference-tool output. They are
+not imported by the app and are not in the build output. See each directory's
 `PROVENANCE.md` and the top-level [`NOTICE`](./NOTICE) for details.
+
+**Contributing:** by submitting a contribution (e.g. a pull request) you agree to
+license it under the project's licence, AGPL-3.0-or-later (inbound = outbound).
