@@ -578,3 +578,118 @@ body {
   padding: 28px 40px;
   border-radius: 14px;
 }
+
+/* Toolbar buttons that only make sense on touch/narrow layouts (the drawer
+   toggles). Hidden on desktop, where the panels are always visible. */
+.mobile-only {
+  display: none;
+}
+
+/* --- Mobile / narrow-screen layout ---
+   The desktop layout scatters panels into all four corners + centre, which
+   collide and overlap on a phone. Here the two side clusters become slide-in
+   drawers (closed by default so the 3D view owns the screen) toggled from a
+   full-width bottom toolbar. The desktop rules above are untouched: the
+   `.open` class and these transforms only exist inside this media query. */
+@media (max-width: 640px) {
+  /* The canvas owns every touch gesture — stop the browser hijacking
+     drags/pinch for scroll or page zoom. */
+  #viewport canvas {
+    touch-action: none;
+  }
+
+  .mobile-only {
+    display: inline-block;
+  }
+
+  /* Toolbar: full-width bottom bar, one horizontally scrollable row. */
+  #toolbar {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    transform: none;
+    gap: 6px;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+    background: var(--panel-bg);
+    border-top: 1px solid var(--panel-border);
+    backdrop-filter: blur(8px);
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  #toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  #toolbar button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    min-height: 40px;
+    backdrop-filter: none;
+  }
+
+  /* Info panel: left drawer, slid off-screen until toggled open. */
+  #panel {
+    top: 8px;
+    left: 8px;
+    max-width: min(320px, 86vw);
+    max-height: calc(100vh - 130px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    transform: translateX(calc(-100% - 16px));
+    transition: transform 0.2s ease;
+  }
+
+  #panel.open {
+    transform: none;
+  }
+
+  /* View controls + legend: right drawer, slid off-screen until toggled. */
+  #controls-host {
+    top: 8px;
+    right: 8px;
+    left: auto;
+    bottom: auto;
+    max-height: calc(100vh - 130px);
+    transform: translateX(calc(100% + 16px));
+    transition: transform 0.2s ease;
+  }
+
+  #controls-host.open {
+    transform: none;
+  }
+
+  .controls,
+  .search,
+  .survey-tree,
+  .legend {
+    width: min(300px, 84vw);
+  }
+
+  .legend-body {
+    height: 130px;
+  }
+
+  /* Decorations: lift clear of the bottom bar and shrink for small screens. */
+  .scalebar {
+    bottom: 70px;
+    left: 8px;
+  }
+
+  /* Only reposition above the toolbar — the cube renders a fixed-size canvas,
+     so shrinking the container would just let the canvas spill off-screen. */
+  .viewcube {
+    bottom: 70px;
+    right: 8px;
+  }
+
+  .north-indicator {
+    top: 8px;
+    right: 8px;
+    width: 44px;
+    height: 44px;
+  }
+}

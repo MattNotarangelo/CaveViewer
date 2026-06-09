@@ -32,6 +32,8 @@ const measureBtn = document.getElementById("btn-measure") as HTMLButtonElement;
 const controlsBtn = document.getElementById("btn-controls") as HTMLButtonElement;
 const unitsBtn = document.getElementById("btn-units") as HTMLButtonElement;
 const themeBtn = document.getElementById("btn-theme") as HTMLButtonElement;
+const infoBtn = document.getElementById("btn-info") as HTMLButtonElement;
+const layersBtn = document.getElementById("btn-layers") as HTMLButtonElement;
 const panel = document.getElementById("panel") as HTMLElement;
 const controlsHost = document.getElementById("controls-host") as HTMLElement;
 
@@ -104,8 +106,16 @@ viewer.onCameraChange = () => {
 viewer.onLegendChange = (spec) => legend.setSpec(spec);
 // Plan view forces (and locks) orthographic; keep the projection toggle in sync.
 viewer.onPlanModeChange = (inPlan) => controls.setProjectionState(viewer.projectionMode, inPlan);
-viewer.onPick = (id) => stationInfo.show(id);
-viewer.onMeasure = (a, b) => measurePanel.show(a, b);
+viewer.onPick = (id) => {
+  stationInfo.show(id);
+  // The selected-station card lives in the (mobile-hidden) info drawer — reveal
+  // it so a tap on a station actually shows something on a phone.
+  if (id !== null) openInfoOnMobile();
+};
+viewer.onMeasure = (a, b) => {
+  measurePanel.show(a, b);
+  if (a !== null && b !== null) openInfoOnMobile();
+};
 viewer.onHover = (id, x, y) => {
   const label = id !== null && currentModel ? currentModel.stations[id].label : "";
   if (!label) {
@@ -138,12 +148,15 @@ function loadFile(filename: string, buffer: ArrayBuffer): void {
     viewCube.el.style.display = hasModel ? "" : "none";
     snapBtn.disabled = !hasModel;
     measureBtn.disabled = !hasModel;
+    layersBtn.disabled = !hasModel; // the controls drawer is empty without a model
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     hud.showError(message);
     stationInfo.show(null);
     setMeasureMode(false);
     controlsHost.style.display = "none";
+    layersBtn.disabled = true;
+    setDrawer(panel.classList.contains("open") ? "info" : null); // close the (now empty) layers drawer
     viewCube.el.style.display = "none";
     legend.setSpec({ kind: "hidden" });
     scaleBar.update(NaN);
@@ -165,6 +178,7 @@ fileInput.addEventListener("change", () => {
   fileInput.value = ""; // allow re-selecting the same file
 });
 fitBtn.addEventListener("click", () => viewer.fitToView());
+layersBtn.disabled = true; // enabled once a model loads
 snapBtn.disabled = true;
 snapBtn.addEventListener("click", () => viewer.snapshot("cave-survey.png"));
 
@@ -242,6 +256,32 @@ themeBtn.addEventListener("click", () => {
   applyTheme(theme === "dark" ? "light" : "dark");
   localStorage.setItem(THEME_KEY, theme);
 });
+
+// --- Mobile drawers ---
+// On narrow screens the info panel (left) and the view-controls cluster (right)
+// become slide-in drawers, closed by default so the 3D view owns the screen.
+// The toggles are display:none on desktop, so this never fires there.
+const mobileMq = window.matchMedia("(max-width: 640px)");
+
+function setDrawer(which: "info" | "layers" | null): void {
+  const showInfo = which === "info";
+  const showLayers = which === "layers";
+  panel.classList.toggle("open", showInfo);
+  controlsHost.classList.toggle("open", showLayers);
+  infoBtn.classList.toggle("active", showInfo);
+  layersBtn.classList.toggle("active", showLayers);
+}
+
+function openInfoOnMobile(): void {
+  if (mobileMq.matches) setDrawer("info");
+}
+
+infoBtn.addEventListener("click", () =>
+  setDrawer(panel.classList.contains("open") ? null : "info"),
+);
+layersBtn.addEventListener("click", () =>
+  setDrawer(controlsHost.classList.contains("open") ? null : "layers"),
+);
 
 // --- Drag and drop anywhere on the window ---
 let dragDepth = 0;
