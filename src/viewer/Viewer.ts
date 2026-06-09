@@ -305,8 +305,8 @@ export class Viewer {
   /** The model's bounding box with vertical exaggeration applied (rendered extent). */
   private scaledModelBox(): THREE.Box3 {
     const b = this.modelBox.clone();
-    b.min.y *= this.verticalScale;
-    b.max.y *= this.verticalScale;
+    b.min.y *= this.vScale();
+    b.max.y *= this.vScale();
     return b;
   }
 
@@ -322,24 +322,28 @@ export class Viewer {
   setVerticalScale(scale: number): void {
     const next = Math.max(1, Math.min(scale, 10));
     if (next === this.verticalScale) return;
-    const ratio = next / this.verticalScale;
+    const before = this.vScale();
     this.verticalScale = next;
-    this.modelGroup.scale.y = next;
+    const after = this.vScale();
+    // In plan view vScale() is pinned to 1, so this is a true no-op — the user's
+    // zoom/pan is left untouched. Exaggeration takes effect when they leave plan.
+    if (after === before) return;
+    this.applyVScale();
+    const ratio = after / before;
+    this.controls.target.y *= ratio;
+    this.activeCam.position.y *= ratio;
+    this.controls.update();
+    this.requestRender();
+  }
+
+  /** Apply the effective vertical scale to the geometry group + markers. */
+  private applyVScale(): void {
+    this.modelGroup.scale.y = this.vScale();
     if (this.selectedStation !== null) this.setSelectedStation(this.selectedStation);
     for (let i = 0; i < this.measurePts.length; i++) {
       this.measureMarkers[i]?.position.copy(this.stationPoint(this.measurePts[i]));
     }
     if (this.measurePts.length === 2) this.drawMeasureLine();
-    if (this.inPlan) {
-      // A top-down view is invariant to vertical scaling — re-fit so framing and
-      // near/far stay correct. (Nudging the camera up the axis like the 3D case
-      // below would push the top-down camera out of the clip range.)
-      this.frame(VIEW_DIRS.plan.dir, VIEW_DIRS.plan.up);
-    } else {
-      this.controls.target.y *= ratio;
-      this.activeCam.position.y *= ratio;
-      this.controls.update();
-    }
     this.requestRender();
   }
 
@@ -411,6 +415,7 @@ export class Viewer {
     if (!wasPlan) {
       this.prePlanProjection = this.projection;
       this.inPlan = true;
+      this.applyVScale(); // plan ignores exaggeration → un-stretch before framing
     }
     if (this.projection !== "orthographic") this.applyProjection("orthographic");
     this.frame(VIEW_DIRS.plan.dir, VIEW_DIRS.plan.up);
@@ -423,6 +428,7 @@ export class Viewer {
   private exitPlanView(restoreProjection: boolean): void {
     if (!this.inPlan) return;
     this.inPlan = false;
+    this.applyVScale(); // restore exaggeration now that we're leaving plan
     this.controls.minPolarAngle = 0;
     this.controls.maxPolarAngle = Math.PI;
     const restore = this.prePlanProjection;
@@ -665,7 +671,7 @@ export class Viewer {
     for (const s of this.model.stations) {
       if (s.flags.anonymous) continue; // wall/splay points aren't meaningful to pick
       const [x, y, z] = surveyToThree(s.x, s.y, s.z);
-      v.set(x, y * this.verticalScale, z).project(cam);
+      v.set(x, y * this.vScale(), z).project(cam);
       if (v.z < -1 || v.z > 1) continue; // behind camera / clipped
       const sx = (v.x * 0.5 + 0.5) * rect.width;
       const sy = (-v.y * 0.5 + 0.5) * rect.height;
@@ -714,11 +720,17 @@ export class Viewer {
     return mesh;
   }
 
+  /** Effective vertical scale: exaggeration applies everywhere except plan view,
+   * where it would be meaningless (you look straight down the scaled axis). */
+  private vScale(): number {
+    return this.inPlan ? 1 : this.verticalScale;
+  }
+
   /** Rendered world position of a station (Three coords, vertical exaggeration applied). */
   private stationPoint(id: number): THREE.Vector3 {
     const s = this.model!.stations[id];
     const [x, y, z] = surveyToThree(s.x, s.y, s.z);
-    return new THREE.Vector3(x, y * this.verticalScale, z);
+    return new THREE.Vector3(x, y * this.vScale(), z);
   }
 
   /** Enter/leave the measure tool; clears any prior measurement and selection. */
