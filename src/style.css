@@ -491,10 +491,9 @@ body {
   padding: 3px 7px;
   font-size: 12px;
   backdrop-filter: blur(8px);
-  max-width: 280px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  max-width: 320px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* --- ViewCube (bottom-right) --- */

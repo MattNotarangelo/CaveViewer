@@ -330,10 +330,17 @@ export class Viewer {
       this.measureMarkers[i]?.position.copy(this.stationPoint(this.measurePts[i]));
     }
     if (this.measurePts.length === 2) this.drawMeasureLine();
-    this.controls.target.y *= ratio;
-    this.activeCam.position.y *= ratio;
+    if (this.inPlan) {
+      // A top-down view is invariant to vertical scaling — re-fit so framing and
+      // near/far stay correct. (Nudging the camera up the axis like the 3D case
+      // below would push the top-down camera out of the clip range.)
+      this.frame(VIEW_DIRS.plan.dir, VIEW_DIRS.plan.up);
+    } else {
+      this.controls.target.y *= ratio;
+      this.activeCam.position.y *= ratio;
+      this.controls.update();
+    }
     this.requestRender();
-    this.controls.update();
   }
 
   /** Snap to a preset viewpoint and frame the cave. */
