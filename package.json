@@ -6,6 +6,14 @@
   "description": "Web-native 3D viewer for cave survey data. Parses survey files entirely client-side.",
   "license": "AGPL-3.0-or-later",
   "author": "Matt Notarangelo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MattNotarangelo/CaveViewer.git"
+  },
+  "homepage": "https://github.com/MattNotarangelo/CaveViewer#readme",
+  "bugs": {
+    "url": "https://github.com/MattNotarangelo/CaveViewer/issues"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -21,7 +29,7 @@
     "@types/node": "^20.19.42",
     "@types/three": "^0.170.0",
     "typescript": "^5.6.3",
-    "vite": "^5.4.10",
-    "vitest": "^2.1.4"
+    "vite": "^6.4.3",
+    "vitest": "^3.2.6"
   }
 }
