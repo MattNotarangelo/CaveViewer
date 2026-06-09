@@ -269,7 +269,13 @@ function assemble(
   }
 
   const model: CaveModel = {
-    metadata: { title, format: "therion-lox", separator: ".", bounds, isExtendedElevation: false },
+    metadata: {
+      title: cleanTherionTitle(title),
+      format: "therion-lox",
+      separator: ".",
+      bounds,
+      isExtendedElevation: false,
+    },
     stations,
     legs,
   };
@@ -280,6 +286,22 @@ function assemble(
     };
   }
   return model;
+}
+
+/**
+ * Therion titles can carry per-language variants, e.g.
+ * `<lang:en>System Migovec<lang:sl>Sistem Migovec`. Prefer English, else the
+ * first variant; strip the markup. Plain titles pass through unchanged.
+ */
+function cleanTherionTitle(raw: string): string {
+  const title = raw.trim();
+  if (!/<lang:/i.test(title)) return title;
+  const parts = title.split(/<lang:([a-z-]+)>/i); // ["", "en", "…", "sl", "…"]
+  const byLang = new Map<string, string>();
+  for (let i = 1; i + 1 < parts.length; i += 2) {
+    byLang.set(parts[i].toLowerCase(), parts[i + 1].trim());
+  }
+  return (byLang.get("en") ?? parts[2] ?? title).trim();
 }
 
 function computeBounds(stations: Station[], wallPositions: number[]): { min: Vec3; max: Vec3 } {

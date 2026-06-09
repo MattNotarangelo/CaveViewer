@@ -780,7 +780,7 @@ export class Viewer {
   /** A bright depth-test-free sphere marker, sized relative to the model. */
   private makeSphere(color: number): THREE.Mesh {
     const size = this.modelBox.getSize(new THREE.Vector3());
-    const r = Math.max(Math.max(size.x, size.y, size.z) * 0.012, 0.3);
+    const r = Math.max(Math.max(size.x, size.y, size.z) * 0.004, 0.3);
     const mat = new THREE.MeshBasicMaterial({
       color,
       depthTest: false,
