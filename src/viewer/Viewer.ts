@@ -697,6 +697,7 @@ export class Viewer {
     }
     this.marker.position.copy(this.stationPoint(id));
     this.marker.visible = true;
+    this.requestRender(); // moving an existing marker also needs a redraw
   }
 
   get selectedStationId(): number | null {
