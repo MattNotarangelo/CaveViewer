@@ -5,6 +5,8 @@
 import type { CaveModel } from "../parser/index";
 
 let listId = 0;
+/** Cap on suggestions shown at once — keeps the datalist light for huge caves. */
+const MAX_SUGGESTIONS = 50;
 
 export class StationSearch {
   readonly el: HTMLElement;
@@ -14,6 +16,7 @@ export class StationSearch {
   private readonly input: HTMLInputElement;
   private readonly datalist: HTMLDataListElement;
   private readonly byLabel = new Map<string, number>();
+  private labels: string[] = [];
 
   constructor() {
     this.el = document.createElement("div");
@@ -30,6 +33,7 @@ export class StationSearch {
     this.datalist = document.createElement("datalist");
     this.datalist.id = id;
 
+    this.input.addEventListener("input", () => this.refreshSuggestions());
     this.input.addEventListener("change", () => this.commit());
     this.input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") this.commit();
@@ -38,19 +42,32 @@ export class StationSearch {
     this.el.append(this.input, this.datalist);
   }
 
-  /** Rebuild the suggestion list from the loaded model's named stations. */
+  /** Index the loaded model's named stations; suggestions are filtered on input. */
   setModel(model: CaveModel): void {
     this.byLabel.clear();
-    const frag = document.createDocumentFragment();
+    this.labels = [];
     for (const s of model.stations) {
       if (!s.label || s.flags.anonymous || this.byLabel.has(s.label)) continue;
       this.byLabel.set(s.label, s.id);
+      this.labels.push(s.label);
+    }
+    this.input.value = "";
+    this.refreshSuggestions();
+  }
+
+  /** Show up to MAX_SUGGESTIONS labels matching the current query (substring). */
+  private refreshSuggestions(): void {
+    const q = this.input.value.trim().toLowerCase();
+    const frag = document.createDocumentFragment();
+    let shown = 0;
+    for (const label of this.labels) {
+      if (q && !label.toLowerCase().includes(q)) continue;
       const opt = document.createElement("option");
-      opt.value = s.label;
+      opt.value = label;
       frag.appendChild(opt);
+      if (++shown >= MAX_SUGGESTIONS) break;
     }
     this.datalist.replaceChildren(frag);
-    this.input.value = "";
   }
 
   private commit(): void {

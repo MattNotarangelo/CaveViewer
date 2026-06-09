@@ -19,6 +19,10 @@ export type Projection = "perspective" | "orthographic";
 /** Preset camera viewpoints. Compass letters name the side the camera sits on. */
 export type PresetView = "plan" | "N" | "S" | "E" | "W" | "iso";
 
+// Reusable scratch objects for per-frame picking (avoid per-call allocation).
+const _pickMat = new THREE.Matrix4();
+const _pickVec = new THREE.Vector3();
+
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
 // Plan view looks (almost) straight down on a vertical-axis frame. The tiny tilt
@@ -84,6 +88,17 @@ export class Viewer {
   private downPos: { x: number; y: number } | null = null;
   private selectedStation: number | null = null;
   private marker: THREE.Mesh | null = null;
+  // Persistent markers for entrance / fixed-point stations (+ their station ids
+  // so they can be repositioned when vertical exaggeration changes).
+  private flagMarkers: THREE.Mesh[] = [];
+  private flagStationIds: number[] = [];
+  // Pick acceleration: flat Three-space coords for pickable (named) stations,
+  // built once per model so hover/click picking doesn't re-walk objects.
+  private pickPositions = new Float32Array(0);
+  private pickableIds: number[] = [];
+  // Hover is coalesced to one pick per animation frame (pointermove can fire
+  // many times per frame); the latest screen position waits here.
+  private pendingHover: { x: number; y: number } | null = null;
   // Measure tool: pick two stations; draw a line + endpoint markers between them.
   private measuring = false;
   private measurePts: number[] = [];
@@ -145,6 +160,7 @@ export class Viewer {
     const dom = this.renderer.domElement;
     dom.addEventListener("pointerdown", this.onPointerDown);
     dom.addEventListener("pointermove", this.onPointerMove);
+    dom.addEventListener("pointerleave", this.onPointerLeave);
     window.addEventListener("pointerup", this.onPointerUp);
     window.addEventListener("pointercancel", this.onPointerUp);
     window.addEventListener("keydown", this.onShiftChange);
@@ -160,9 +176,11 @@ export class Viewer {
     this.model = model;
     this.modelBox = this.computeBox(model);
     this.hiddenSurveys = new Set(); // survey visibility is per-model
+    this.buildPickCache(model);
     this.clearMarker(); // selection + marker belong to the previous model
     this.clearMeasure();
     this.buildWalls(model); // .lox passage-wall mesh (if any); independent of colour mode
+    this.buildFlagMarkers(model); // entrance / fixed-point markers
     this.rebuild();
     this.setView("iso");
   }
@@ -344,7 +362,33 @@ export class Viewer {
       this.measureMarkers[i]?.position.copy(this.stationPoint(this.measurePts[i]));
     }
     if (this.measurePts.length === 2) this.drawMeasureLine();
+    for (let i = 0; i < this.flagMarkers.length; i++) {
+      this.flagMarkers[i].position.copy(this.stationPoint(this.flagStationIds[i]));
+    }
     this.requestRender();
+  }
+
+  private clearFlagMarkers(): void {
+    for (const m of this.flagMarkers) {
+      this.scene.remove(m);
+      m.geometry.dispose();
+      (m.material as THREE.Material).dispose();
+    }
+    this.flagMarkers = [];
+    this.flagStationIds = [];
+  }
+
+  /** Place a marker on each entrance (green) and fixed (amber) station. */
+  private buildFlagMarkers(model: CaveModel): void {
+    this.clearFlagMarkers();
+    for (const s of model.stations) {
+      const color = s.flags.entrance ? 0x3fb950 : s.flags.fixed ? 0xe3a008 : null;
+      if (color === null) continue;
+      const m = this.makeSphere(color);
+      m.position.copy(this.stationPoint(s.id));
+      this.flagMarkers.push(m);
+      this.flagStationIds.push(s.id);
+    }
   }
 
   /** Snap to a preset viewpoint and frame the cave. */
@@ -634,7 +678,14 @@ export class Viewer {
       this.lastPointer = { pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY };
       return;
     }
-    if (this.onHover) this.onHover(this.pickStation(e.clientX, e.clientY), e.clientX, e.clientY);
+    // Defer the (O(stations)) hover pick to the next frame so rapid pointermove
+    // events coalesce into at most one pick per frame.
+    if (this.onHover) this.pendingHover = { x: e.clientX, y: e.clientY };
+  };
+
+  private onPointerLeave = (): void => {
+    this.pendingHover = null;
+    this.onHover?.(null, 0, 0); // hide the tooltip when the cursor leaves the canvas
   };
 
   private onPointerUp = (e: PointerEvent): void => {
@@ -656,32 +707,54 @@ export class Viewer {
     this.lastPointer = null;
   };
 
-  /** Nearest named station to a screen position, within a pixel tolerance. */
+  /**
+   * Nearest named station to a screen position, within a pixel tolerance. Uses
+   * the cached position array and a single combined view-projection matrix so a
+   * pick is one mat4 multiply per pickable station (cheap enough at 10k+).
+   */
   private pickStation(clientX: number, clientY: number): number | null {
-    if (!this.model) return null;
+    if (!this.model || this.pickableIds.length === 0) return null;
     const rect = this.renderer.domElement.getBoundingClientRect();
     const px = clientX - rect.left;
     const py = clientY - rect.top;
     const cam = this.activeCam;
     cam.updateMatrixWorld();
     cam.matrixWorldInverse.copy(cam.matrixWorld).invert();
-    const v = new THREE.Vector3();
+    // World->NDC in one matrix; the intermediate (rigid) transform keeps w=1, so
+    // a single applyMatrix4 matches Vector3.project()'s two-step result.
+    const m = _pickMat.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+    const vs = this.vScale();
+    const v = _pickVec;
     let best = -1;
     let bestD2 = PICK_TOLERANCE_PX * PICK_TOLERANCE_PX;
-    for (const s of this.model.stations) {
-      if (s.flags.anonymous) continue; // wall/splay points aren't meaningful to pick
-      const [x, y, z] = surveyToThree(s.x, s.y, s.z);
-      v.set(x, y * this.vScale(), z).project(cam);
+    for (const id of this.pickableIds) {
+      const i = id * 3;
+      v.set(this.pickPositions[i], this.pickPositions[i + 1] * vs, this.pickPositions[i + 2]).applyMatrix4(m);
       if (v.z < -1 || v.z > 1) continue; // behind camera / clipped
       const sx = (v.x * 0.5 + 0.5) * rect.width;
       const sy = (-v.y * 0.5 + 0.5) * rect.height;
       const d2 = (sx - px) * (sx - px) + (sy - py) * (sy - py);
       if (d2 < bestD2) {
         bestD2 = d2;
-        best = s.id;
+        best = id;
       }
     }
     return best >= 0 ? best : null;
+  }
+
+  /** Cache pickable stations' Three-space positions for fast picking. */
+  private buildPickCache(model: CaveModel): void {
+    const n = model.stations.length;
+    this.pickPositions = new Float32Array(n * 3);
+    this.pickableIds = [];
+    for (const s of model.stations) {
+      const [x, y, z] = surveyToThree(s.x, s.y, s.z);
+      const i = s.id * 3;
+      this.pickPositions[i] = x;
+      this.pickPositions[i + 1] = y;
+      this.pickPositions[i + 2] = z;
+      if (!s.flags.anonymous) this.pickableIds.push(s.id); // skip wall/splay points
+    }
   }
 
   /** Highlight a station with the marker (or clear with null). */
@@ -891,6 +964,11 @@ export class Viewer {
   private animate = (): void => {
     if (this.disposed) return;
     requestAnimationFrame(this.animate);
+    if (this.pendingHover && this.onHover) {
+      const { x, y } = this.pendingHover;
+      this.pendingHover = null;
+      this.onHover(this.pickStation(x, y), x, y);
+    }
     const cameraMoved = this.controls.update();
     if (cameraMoved || this.needsRender) {
       this.renderer.render(this.scene, this.activeCam);
@@ -910,6 +988,7 @@ export class Viewer {
     const dom = this.renderer.domElement;
     dom.removeEventListener("pointerdown", this.onPointerDown);
     dom.removeEventListener("pointermove", this.onPointerMove);
+    dom.removeEventListener("pointerleave", this.onPointerLeave);
     window.removeEventListener("pointerup", this.onPointerUp);
     window.removeEventListener("pointercancel", this.onPointerUp);
     window.removeEventListener("keydown", this.onShiftChange);
