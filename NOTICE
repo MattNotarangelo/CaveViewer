@@ -8,24 +8,24 @@ static site) are licensed under the AGPL-3.0-or-later. Anyone who distributes
 this software, or hosts a modified version of it as a network service, must
 make the complete corresponding source available under the same licence.
 
-----------------------------------------------------------------------
-Third-party test vectors (NOT part of the distributed product)
-----------------------------------------------------------------------
+---
+
+## Third-party test vectors (NOT part of the distributed product)
 
 The repository vendors a small number of reference test vectors used ONLY by
 the test suite to validate parser interoperability against genuine
 reference-tool output. They are not imported by the application and are not
 included in the build output.
 
-  - test/fixtures/survex/   (Survex .3d files + dump3d output)
-    From the Survex project (https://survex.com/), GNU GPL v2 or later.
-  - test/fixtures/compass/  (Compass .plt files + Survex's decode of them)
-    Decodes produced with Survex tooling, GNU GPL v2 or later.
-  - test/fixtures/therion/  (a real .lox/.3d survey pair used as a
-    cross-format oracle)
-    From https://github.com/tr1813/ultima-patagonia-topo; the upstream
-    repository does not state an explicit licence. Vendored solely as small
-    interop test vectors (survey data, not software).
+- test/fixtures/survex/ (Survex .3d files + dump3d output)
+  From the Survex project (https://survex.com/), GNU GPL v2 or later.
+- test/fixtures/compass/ (Compass .plt files + Survex's decode of them)
+  Decodes produced with Survex tooling, GNU GPL v2 or later.
+- test/fixtures/therion/ (a real .lox/.3d survey pair used as a
+  cross-format oracle)
+  From https://github.com/tr1813/ultima-patagonia-topo; the upstream
+  repository does not state an explicit licence. Vendored solely as small
+  interop test vectors (survey data, not software).
 
 See the PROVENANCE.md file in each directory for exact sources and rationale.
 The Survex-derived files are GPL-v2-or-later, which is licence-compatible
@@ -33,27 +33,25 @@ with this project's AGPL-3.0-or-later (via the "or any later version"
 upgrade path); in any case they are aggregated with, not combined into, the
 application code, and the application is not a derivative work of them.
 
-----------------------------------------------------------------------
-Bundled example survey (public/system_migovec.lox)
-----------------------------------------------------------------------
+---
+
+## Bundled example survey (public/system_migovec.lox)
 
 The "Load example cave" dataset is the Tolminski Migovec cave system,
 surveyed by the JSPDT and the Imperial College Caving Club (ICCC). The
 compiled Therion .lox model is published for public download by the project:
 
-  https://github.com/iccaving/migovec-survey-data
-  Viewer: https://iccaving.github.io/migovec-survey-data/
+https://github.com/iccaving/migovec-survey-data
+Viewer: https://iccaving.github.io/migovec-survey-data/
 
 Included here as an example dataset, with attribution to its surveyors. This
-is survey data (measurements), not software. The upstream repository does not
-state an explicit licence; redistribution terms should be confirmed with the
-ICCC / JSPDT before publishing this bundled copy.
+is real, publically accessible survey data (measurements), not software.
 
-----------------------------------------------------------------------
-Runtime dependencies
-----------------------------------------------------------------------
+---
 
-  - three (3D rendering) — MIT License
+## Runtime dependencies
+
+- three (3D rendering) — MIT License
 
 MIT-licensed dependencies may be incorporated into AGPL-licensed works.
 Build/test tooling (Vite, TypeScript, Vitest) is MIT-licensed.
