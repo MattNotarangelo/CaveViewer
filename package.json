@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Web-native 3D viewer for cave survey data. Parses survey files entirely client-side.",
-  "license": "MIT",
+  "license": "AGPL-3.0-or-later",
   "author": "Matt Notarangelo",
   "scripts": {
     "dev": "vite",

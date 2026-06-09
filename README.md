@@ -196,9 +196,13 @@ with the compass directions.
 
 ## License
 
-This project is licensed under the **MIT License** (`SPDX-License-Identifier: MIT`)
-— see [`LICENSE`](./LICENSE). The source code and the built static site (`dist/`)
-are MIT and contain no third-party copyleft material.
+This project is licensed under the **GNU Affero General Public License v3.0 or
+later** (`SPDX-License-Identifier: AGPL-3.0-or-later`) — see [`LICENSE`](./LICENSE).
+
+This is a strong copyleft licence: you are free to use, modify, and even sell this
+software, **but** any version you distribute **or host as a network service** must
+make its complete corresponding source code available under the same licence. In
+short — no closed-source forks, and no closed-source hosted deployments.
 
 **Test vectors:** `test/fixtures/survex/` and `test/fixtures/compass/` vendor small
 reference test vectors from the [Survex](https://survex.com/) project (GPL v2+),
