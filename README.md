@@ -14,12 +14,12 @@ feature, not a limitation. The app deploys as a pure static site.
 | Phase | Scope | State |
 |-------|-------|-------|
 | **1** | Survex `.3d` (v8): centreline render, orbit/pan/zoom, depth colouring, drag-and-drop, fit-to-view, length/bounds readout, north indicator | ✅ done |
-| **1+** | Preset plan/elevation views, orthographic toggle, scale bar, colour modes (elevation / distance-from-entrance / gradient / survey / single), leg-type visibility toggles, PNG export _(ideas adopted from [CaveView.js](https://github.com/aardgoose/CaveView.js))_ | ✅ done |
+| **1+** | Preset plan/elevation views, orthographic toggle, scale bar, colour modes (elevation / distance-from-entrance / gradient / survey / date / single), leg-type visibility toggles, PNG export _(ideas adopted from [CaveView.js](https://github.com/aardgoose/CaveView.js))_ | ✅ done |
 | **2** | **Compass `.plt`** (processed coordinates, LRUD, splays, multi-survey) | ✅ done |
 | **3** | **Therion `.lox`** + lit triangle-mesh passage walls (the modelled scrap surfaces); **LRUD passage tubes** reconstructed for `.3d`/`.plt` | ✅ done |
 | **4** | **Interaction & UX**: ViewCube navigation (drag to orbit, click a face to snap); click a station for its details; hover labels + station finder; **measure tool** (straight-line / horizontal / vertical / bearing / shortest route along the cave); **survey-tree show/hide**; **vertical exaggeration**; entrance & fixed-point markers; light/dark theme; metric/imperial units; render-on-demand (idle GPU) | ✅ done |
 | **5** | **PocketTopo `.top`** (raw DistoX shots: declination, repeated-shot averaging, splays, reference anchoring, trip dates) | ✅ done |
-| next | Colour by date; cross-sections from splays; clipping plane / depth cursor; depth fog | planned |
+| next | Cross-sections from splays; clipping plane / depth cursor; depth fog | planned |
 
 ## Architecture
 
@@ -192,7 +192,7 @@ with the compass directions.
 
 - **Quick views**: Plan (top-down, North up — locked to orthographic) and 3D. <kbd>P</kbd> = plan.
 - **Projection**: toggle Perspective ⇄ Orthographic (true-scale); locked to orthographic in plan view.
-- **Colour by**: elevation, distance-from-entrance, gradient (steepness), survey/series, or single colour. The legend adapts to the mode.
+- **Colour by**: elevation, distance-from-entrance, gradient (steepness), survey/series, survey date (oldest cool → newest warm; undated legs grey), or single colour. The legend adapts to the mode.
 - **Vertical exaggeration**: a 1×–8× slider to stretch deep caves vertically (no effect in plan).
 - **Show**: toggle splay / surface / duplicate legs, and the passage-wall mesh (Walls — Therion `.lox` scrap meshes, or tubes reconstructed from LRUD cross-sections for `.3d`/`.plt`).
 - **Surveys**: a collapsible tree to show/hide individual survey series.

@@ -1,6 +1,6 @@
 /**
- * Tests for the pure colour-mode logic, focusing on the entrance-distance graph
- * (multi-source Dijkstra over the leg network).
+ * Tests for the pure colour-mode logic: the entrance-distance graph
+ * (multi-source Dijkstra over the leg network) and the survey-date mode.
  */
 import { describe, it, expect } from "vitest";
 import {
@@ -8,8 +8,17 @@ import {
   emptyLegFlags,
   emptyStationFlags,
   type CaveModel,
+  type DateRange,
 } from "../src/parser/index";
-import { entranceDistances, surveyColor } from "../src/viewer/coloring";
+import {
+  COLOR_MODES,
+  entranceDistances,
+  legColors,
+  legendSpecFor,
+  prepareColorData,
+  surveyColor,
+} from "../src/viewer/coloring";
+import { depthColor, type RGB } from "../src/viewer/colormap";
 import { encode3d, toArrayBuffer } from "./helpers/encode3d";
 
 function parse(bytes: Uint8Array) {
@@ -111,5 +120,94 @@ describe("entranceDistances", () => {
   it("gives stable, distinct colours per survey name", () => {
     expect(surveyColor("main")).toEqual(surveyColor("main"));
     expect(surveyColor("main")).not.toEqual(surveyColor("branch"));
+  });
+});
+
+describe("date colour mode", () => {
+  // Hand-built minimal model: a chain of stations with one leg per date entry.
+  function datedModel(dates: Array<DateRange | undefined>): CaveModel {
+    const stations: CaveModel["stations"] = [];
+    for (let i = 0; i <= dates.length; i++) {
+      const flags = emptyStationFlags();
+      flags.underground = true;
+      stations.push({ id: i, label: `s${i}`, x: i, y: 0, z: 0, flags });
+    }
+    const legs: CaveModel["legs"] = dates.map((date, i) => {
+      const leg: CaveModel["legs"][number] = { from: i, to: i + 1, flags: emptyLegFlags() };
+      if (date) leg.date = date;
+      return leg;
+    });
+    return {
+      metadata: {
+        title: "t",
+        format: "test",
+        separator: ".",
+        bounds: { min: [0, 0, 0], max: [dates.length, 0, 0] },
+        isExtendedElevation: false,
+      },
+      stations,
+      legs,
+    };
+  }
+
+  const day = (iso: string): DateRange => ({ from: iso, to: iso });
+  const GREY: RGB = [0.5, 0.5, 0.55];
+
+  it("colours legs across the date range, oldest cool to newest warm", () => {
+    const model = datedModel([day("2010-01-01"), day("2015-01-01"), day("2020-01-01"), undefined]);
+    const data = prepareColorData(model, "date");
+    const colors = model.legs.map((l) => legColors(data, model, l));
+    expect(colors[0][0]).toEqual(depthColor(0)); // oldest
+    expect(colors[2][0]).toEqual(depthColor(1)); // newest
+    expect(colors[1][0]).not.toEqual(colors[0][0]); // mid differs from both ends
+    expect(colors[1][0]).not.toEqual(colors[2][0]);
+    expect(colors[0][0]).toEqual(colors[0][1]); // both endpoints share the colour
+    expect(colors[3][0]).toEqual(GREY); // undated leg
+  });
+
+  it("uses the midpoint of a leg's date range", () => {
+    const model = datedModel([
+      { from: "2010-01-01", to: "2010-01-03" },
+      day("2010-01-02"),
+      day("2020-01-01"), // stretch the range so equal midpoints matter
+    ]);
+    const data = prepareColorData(model, "date");
+    expect(legColors(data, model, model.legs[0])).toEqual(legColors(data, model, model.legs[1]));
+  });
+
+  it("produces a gradient legend labelled with ISO dates, newest at the top", () => {
+    const model = datedModel([day("2010-01-01"), day("2020-01-01")]);
+    const spec = legendSpecFor(prepareColorData(model, "date"));
+    expect(spec).toEqual({
+      kind: "gradient",
+      title: "Survey date",
+      hi: "2020-01-01",
+      mid: "2015-01-01", // (14610 + 18262) / 2 = 16436 epoch days = exactly 2015-01-01
+      lo: "2010-01-01",
+    });
+  });
+
+  it("shows a note and grey legs when the model has no dates at all", () => {
+    const model = datedModel([undefined, undefined]);
+    const data = prepareColorData(model, "date");
+    expect(legendSpecFor(data)).toEqual({
+      kind: "note",
+      title: "Survey date",
+      text: "no dates recorded",
+    });
+    expect(legColors(data, model, model.legs[0])[0]).toEqual(GREY);
+  });
+
+  it("handles a single-date survey without dividing by zero", () => {
+    const model = datedModel([day("2020-01-01"), day("2020-01-01")]);
+    const data = prepareColorData(model, "date");
+    expect(legColors(data, model, model.legs[0])[0]).toEqual(depthColor(0.5));
+    const spec = legendSpecFor(data);
+    expect(spec.kind).toBe("gradient");
+    if (spec.kind === "gradient") expect(spec.hi).toBe("2020-01-01");
+  });
+
+  it("is offered in the colour-mode list", () => {
+    expect(COLOR_MODES.some((m) => m.id === "date")).toBe(true);
   });
 });

@@ -6,7 +6,7 @@
 import type { CaveModel, Leg } from "../parser/index";
 import { depthColor, hslToRgb, type RGB } from "./colormap";
 
-export type ColorMode = "height" | "distance" | "inclination" | "survey" | "single";
+export type ColorMode = "height" | "distance" | "inclination" | "survey" | "date" | "single";
 
 export interface ColorModeInfo {
   id: ColorMode;
@@ -18,6 +18,7 @@ export const COLOR_MODES: ReadonlyArray<ColorModeInfo> = [
   { id: "distance", label: "Distance from entrance" },
   { id: "inclination", label: "Gradient (steepness)" },
   { id: "survey", label: "Survey / series" },
+  { id: "date", label: "Survey date" },
   { id: "single", label: "Single colour" },
 ];
 
@@ -38,6 +39,9 @@ export interface ColorData {
   /** Geodesic distance (m) from the nearest entrance, per station id. */
   distance?: Float64Array;
   maxDistance: number;
+  /** Survey-date range (days since the Unix epoch); absent when nothing is dated. */
+  dateMin?: number;
+  dateMax?: number;
 }
 
 export function prepareColorData(model: CaveModel, mode: ColorMode): ColorData {
@@ -46,6 +50,17 @@ export function prepareColorData(model: CaveModel, mode: ColorMode): ColorData {
   if (mode === "distance") {
     const { distance, max } = entranceDistances(model);
     return { mode, minZ, maxZ, distance, maxDistance: max };
+  }
+  if (mode === "date") {
+    let dateMin: number | undefined;
+    let dateMax: number | undefined;
+    for (const leg of model.legs) {
+      const d = legDateDay(leg);
+      if (d === null) continue;
+      if (dateMin === undefined || d < dateMin) dateMin = d;
+      if (dateMax === undefined || d > dateMax) dateMax = d;
+    }
+    return { mode, minZ, maxZ, maxDistance: 0, dateMin, dateMax };
   }
   return { mode, minZ, maxZ, maxDistance: 0 };
 }
@@ -72,6 +87,15 @@ export function legColors(data: ColorData, model: CaveModel, leg: Leg): [RGB, RG
     }
     case "survey": {
       const c = leg.survey ? surveyColor(leg.survey) : GREY;
+      return [c, c];
+    }
+    case "date": {
+      const d = legDateDay(leg);
+      if (d === null || data.dateMin === undefined || data.dateMax === undefined) {
+        return [GREY, GREY];
+      }
+      const span = data.dateMax - data.dateMin;
+      const c = depthColor(span > 0 ? (d - data.dateMin) / span : 0.5);
       return [c, c];
     }
     case "single":
@@ -107,9 +131,35 @@ export function legendSpecFor(data: ColorData): LegendSpec {
       };
     case "survey":
       return { kind: "note", title: "Colour", text: "by survey / series" };
+    case "date":
+      if (data.dateMin === undefined || data.dateMax === undefined) {
+        return { kind: "note", title: "Survey date", text: "no dates recorded" };
+      }
+      return {
+        kind: "gradient",
+        title: "Survey date",
+        hi: isoOfDay(data.dateMax),
+        mid: isoOfDay((data.dateMin + data.dateMax) / 2),
+        lo: isoOfDay(data.dateMin),
+      };
     case "single":
       return { kind: "hidden" };
   }
+}
+
+const MS_PER_DAY = 86400000;
+
+/** A leg's date as days since the Unix epoch (midpoint of its range), if dated. */
+function legDateDay(leg: Leg): number | null {
+  if (!leg.date) return null;
+  const a = Date.parse(leg.date.from);
+  const b = Date.parse(leg.date.to);
+  if (Number.isNaN(a) || Number.isNaN(b)) return null;
+  return (a + b) / 2 / MS_PER_DAY;
+}
+
+function isoOfDay(day: number): string {
+  return new Date(Math.round(day * MS_PER_DAY)).toISOString().slice(0, 10);
 }
 
 function colorForDistance(d: number, max: number): RGB {

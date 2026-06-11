@@ -451,6 +451,9 @@ body {
   width: 14px;
   border-radius: 4px;
   border: 1px solid var(--panel-border);
+  /* Size the gradient to the border box; otherwise it tiles under the
+     translucent 1px border, leaking the opposite end's colour at each end. */
+  background-origin: border-box;
 }
 
 .legend-labels {
