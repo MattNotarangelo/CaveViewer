@@ -17,7 +17,7 @@ feature, not a limitation. The app deploys as a pure static site.
 | **1+** | Preset plan/elevation views, orthographic toggle, scale bar, colour modes (elevation / distance-from-entrance / gradient / survey / single), leg-type visibility toggles, PNG export _(ideas adopted from [CaveView.js](https://github.com/aardgoose/CaveView.js))_ | ✅ done |
 | **2** | **Compass `.plt`** (processed coordinates, LRUD, splays, multi-survey) | ✅ done |
 | **3** | **Therion `.lox`** + lit triangle-mesh passage walls (the modelled scrap surfaces); **LRUD passage tubes** reconstructed for `.3d`/`.plt` | ✅ done |
-| **4** | **Interaction & UX**: ViewCube navigation (drag to orbit, click a face to snap); click a station for its details; hover labels + station finder; **measure tool** (straight-line / horizontal / vertical / bearing); **survey-tree show/hide**; **vertical exaggeration**; entrance & fixed-point markers; light/dark theme; metric/imperial units; render-on-demand (idle GPU) | ✅ done |
+| **4** | **Interaction & UX**: ViewCube navigation (drag to orbit, click a face to snap); click a station for its details; hover labels + station finder; **measure tool** (straight-line / horizontal / vertical / bearing / shortest route along the cave); **survey-tree show/hide**; **vertical exaggeration**; entrance & fixed-point markers; light/dark theme; metric/imperial units; render-on-demand (idle GPU) | ✅ done |
 | **5** | **PocketTopo `.top`** (raw DistoX shots: declination, repeated-shot averaging, splays, reference anchoring, trip dates) | ✅ done |
 | next | Colour by date; cross-sections from splays; clipping plane / depth cursor; depth fog | planned |
 
@@ -201,7 +201,7 @@ with the compass directions.
 **Selecting & measuring:**
 
 - **Hover** a station to see its name; **click** it for a panel with name, position, elevation, and distance from the entrance. Entrances (green) and fixed points (amber) are marked.
-- **Measure**: toolbar toggle; click two stations for the straight-line / horizontal / vertical distance and compass bearing.
+- **Measure**: toolbar toggle; click two stations for the straight-line / horizontal / vertical distance and compass bearing, plus the shortest **route distance along the cave** (the route is highlighted in the view; “no route” if the stations aren't connected).
 
 **Toolbar** (bottom):
 

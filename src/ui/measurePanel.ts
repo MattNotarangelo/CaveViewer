@@ -1,8 +1,10 @@
 /**
  * Measure-tool readout: straight-line + horizontal distance, vertical change,
- * and compass bearing between two picked stations. Respects the unit system.
+ * compass bearing, and the shortest along-the-cave route distance between two
+ * picked stations. Respects the unit system.
  */
 import type { CaveModel } from "../parser/index";
+import type { Route } from "../viewer/route";
 import { escapeHtml } from "./escapeHtml";
 import { formatLength, toDisplayLength, unitLabel, type UnitSystem } from "./units";
 
@@ -15,6 +17,7 @@ export class MeasurePanel {
   private model: CaveModel | null = null;
   private a: number | null = null;
   private b: number | null = null;
+  private route: Route | null = null;
 
   constructor() {
     this.el = document.createElement("div");
@@ -32,9 +35,10 @@ export class MeasurePanel {
   }
 
   /** Show the measurement: one endpoint (prompt for second) or both (results). */
-  show(a: number | null, b: number | null): void {
+  show(a: number | null, b: number | null, route: Route | null = null): void {
     this.a = a;
     this.b = b;
+    this.route = route;
     this.render();
   }
 
@@ -65,6 +69,9 @@ export class MeasurePanel {
       let bearing = (Math.atan2(dEast, dNorth) * 180) / Math.PI; // 0 = N, 90 = E
       if (bearing < 0) bearing += 360;
       const vert = `${dz >= 0 ? "+" : "−"}${toDisplayLength(Math.abs(dz), u).toFixed(1)} ${lbl}`;
+      const route = this.route
+        ? formatLength(this.route.lengthM, u)
+        : "no route"; // endpoints not connected through the centreline
       this.el.innerHTML = `${head}
         <p class="measure-ends">${escapeHtml(a.label || "(anon)")} → ${escapeHtml(b.label || "(anon)")}</p>
         <dl class="hud-stats">
@@ -72,6 +79,7 @@ export class MeasurePanel {
           <dt>Horizontal</dt><dd>${formatLength(plan, u)}</dd>
           <dt>Vertical</dt><dd>${vert}</dd>
           <dt>Bearing</dt><dd>${bearing.toFixed(1)}°</dd>
+          <dt>Along cave</dt><dd>${route}</dd>
         </dl>`;
     }
     this.el.style.display = "";

@@ -7,10 +7,13 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
+import { Line2 } from "three/examples/jsm/lines/Line2.js";
+import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
 import type { CaveModel } from "../parser/index";
 import { buildCenterline, type LegVisibility } from "./buildCenterline";
 import type { ColorMode, LegendSpec } from "./coloring";
 import { surveyToThree } from "./coords";
+import { findRoute, type Route } from "./route";
 import { buildLrudTubes } from "./buildLrudTubes";
 
 /** What a plain left-drag does. See {@link Viewer.setLeftDragMode}. */
@@ -104,6 +107,11 @@ export class Viewer {
   private measurePts: number[] = [];
   private measureMarkers: (THREE.Mesh | null)[] = [null, null];
   private measureLine: THREE.Line | null = null;
+  // Shortest along-the-cave route between the two measure endpoints. Drawn as
+  // a fat line so it reads on top of the (also fat) centreline.
+  private measureRoute: Route | null = null;
+  private routeLine: Line2 | null = null;
+  private readonly routeMaterial: LineMaterial;
 
   /** Fires whenever the camera moves (north indicator, scale bar). */
   onCameraChange?: () => void;
@@ -116,7 +124,7 @@ export class Viewer {
   /** Fires on hover (not dragging) with the station under the cursor, or null. */
   onHover?: (stationId: number | null, clientX: number, clientY: number) => void;
   /** Fires when the measure tool has two endpoints (or null,null when cleared). */
-  onMeasure?: (aId: number | null, bId: number | null) => void;
+  onMeasure?: (aId: number | null, bId: number | null, route: Route | null) => void;
 
   constructor(private readonly container: HTMLElement) {
     this.scene.background = new THREE.Color(0x10131a);
@@ -152,6 +160,16 @@ export class Viewer {
       alphaToCoverage: true,
     });
     this.material.resolution.set(w, h);
+
+    this.routeMaterial = new LineMaterial({
+      color: 0x5cc8fa,
+      linewidth: 5, // pixels — wider than the centreline so the highlight reads
+      worldUnits: false,
+      transparent: true,
+      opacity: 0.85,
+      depthTest: false,
+    });
+    this.routeMaterial.resolution.set(w, h);
 
     this.resizeObserver = new ResizeObserver(() => this.handleResize());
     this.resizeObserver.observe(container);
@@ -361,7 +379,10 @@ export class Viewer {
     for (let i = 0; i < this.measurePts.length; i++) {
       this.measureMarkers[i]?.position.copy(this.stationPoint(this.measurePts[i]));
     }
-    if (this.measurePts.length === 2) this.drawMeasureLine();
+    if (this.measurePts.length === 2) {
+      this.drawMeasureLine();
+      this.drawRouteLine();
+    }
     for (let i = 0; i < this.flagMarkers.length; i++) {
       this.flagMarkers[i].position.copy(this.stationPoint(this.flagStationIds[i]));
     }
@@ -824,10 +845,12 @@ export class Viewer {
     m.position.copy(this.stationPoint(id));
     this.measureMarkers[slot] = m;
     if (this.measurePts.length === 2) {
+      this.measureRoute = findRoute(this.model!, this.measurePts[0], this.measurePts[1]);
       this.drawMeasureLine();
-      this.onMeasure?.(this.measurePts[0], this.measurePts[1]);
+      this.drawRouteLine();
+      this.onMeasure?.(this.measurePts[0], this.measurePts[1], this.measureRoute);
     } else {
-      this.onMeasure?.(id, null);
+      this.onMeasure?.(id, null, null);
     }
   }
 
@@ -844,6 +867,29 @@ export class Viewer {
     this.measureLine = new THREE.Line(geom, mat);
     this.measureLine.renderOrder = 998;
     this.scene.add(this.measureLine);
+    this.requestRender();
+  }
+
+  /** Highlight the along-the-cave route between the two measure endpoints. */
+  private drawRouteLine(): void {
+    if (this.routeLine) {
+      this.scene.remove(this.routeLine);
+      this.routeLine.geometry.dispose(); // material is shared; keep it
+      this.routeLine = null;
+    }
+    const route = this.measureRoute;
+    if (!route || route.stations.length < 2) return;
+    const positions: number[] = [];
+    for (const id of route.stations) {
+      const p = this.stationPoint(id);
+      positions.push(p.x, p.y, p.z);
+    }
+    const geom = new LineGeometry();
+    geom.setPositions(positions);
+    this.routeLine = new Line2(geom, this.routeMaterial);
+    this.routeLine.computeLineDistances();
+    this.routeLine.renderOrder = 997; // beneath the straight measure line
+    this.scene.add(this.routeLine);
     this.requestRender();
   }
 
@@ -864,6 +910,8 @@ export class Viewer {
       (this.measureLine.material as THREE.Material).dispose();
       this.measureLine = null;
     }
+    this.measureRoute = null;
+    this.drawRouteLine(); // disposes the highlight (no route set)
     this.requestRender();
   }
 
@@ -958,6 +1006,7 @@ export class Viewer {
     this.orthoCam.updateProjectionMatrix();
     this.renderer.setSize(w, h);
     this.material.resolution.set(w, h);
+    this.routeMaterial.resolution.set(w, h);
     this.onCameraChange?.();
     this.requestRender();
   }
