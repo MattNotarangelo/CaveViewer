@@ -68,6 +68,41 @@ describe("entranceDistances", () => {
     expect(distance[splayEnd.id]).toBe(Infinity);
   });
 
+  it("crosses coordinate-coincident stations (cross-survey equates in .lox)", () => {
+    // Therion .lox writes an equated station once per survey: stations 1 and 2
+    // here share a point but no leg joins them. Distance must flow through.
+    const mkStation = (id: number, x: number, y: number, entrance = false) => {
+      const flags = emptyStationFlags();
+      flags.underground = true;
+      flags.entrance = entrance;
+      return { id, label: `s${id}`, x, y, z: 0, flags };
+    };
+    const model: CaveModel = {
+      metadata: {
+        title: "t",
+        format: "test",
+        separator: ".",
+        bounds: { min: [0, 0, 0], max: [3, 0, 0] },
+        isExtendedElevation: false,
+      },
+      stations: [
+        mkStation(0, 0, 0, true), // entrance
+        mkStation(1, 1, 0),
+        mkStation(2, 1, 0), // coincides with station 1
+        mkStation(3, 3, 0),
+      ],
+      legs: [
+        { from: 0, to: 1, flags: emptyLegFlags() }, // 1 m
+        { from: 2, to: 3, flags: emptyLegFlags() }, // 2 m
+      ],
+    };
+    const { distance, max } = entranceDistances(model);
+    expect(distance[1]).toBeCloseTo(1, 6);
+    expect(distance[2]).toBeCloseTo(1, 6); // the equate twin shares the distance
+    expect(distance[3]).toBeCloseTo(3, 6);
+    expect(max).toBeCloseTo(3, 6);
+  });
+
   it("falls back to station 0 when no entrance or fixed station exists", () => {
     const model = parse(
       encode3d({

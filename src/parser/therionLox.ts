@@ -230,15 +230,18 @@ function assemble(
   for (const s of loxStations) {
     const index = stations.length;
     idToIndex.set(s.id, index);
+    // Therion names anonymous splay/wall endpoints "." or "-"; treat them like
+    // the other parsers' anonymous stations (unlabelled, not pickable).
+    const anonymous = s.name === "" || s.name === "." || s.name === "-";
     const path = surveyPath(surveys, s.surveyId);
-    const label = path ? (s.name ? `${path}.${s.name}` : path) : s.name;
+    const label = anonymous ? "" : path ? `${path}.${s.name}` : s.name;
     const flags = emptyStationFlags();
     flags.surface = (s.flags & ST_FLAG_SURFACE) !== 0;
     flags.underground = !flags.surface;
     flags.entrance = (s.flags & ST_FLAG_ENTRANCE) !== 0;
     flags.fixed = (s.flags & ST_FLAG_FIXED) !== 0;
     flags.wall = (s.flags & ST_FLAG_HAS_WALLS) !== 0;
-    flags.anonymous = s.name === "";
+    flags.anonymous = anonymous;
     stations.push({ id: index, label, x: s.x, y: s.y, z: s.z, flags });
   }
 

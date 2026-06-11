@@ -112,8 +112,8 @@ viewer.onPick = (id) => {
   // it so a tap on a station actually shows something on a phone.
   if (id !== null) openInfoOnMobile();
 };
-viewer.onMeasure = (a, b) => {
-  measurePanel.show(a, b);
+viewer.onMeasure = (a, b, route) => {
+  measurePanel.show(a, b, route);
   if (a !== null && b !== null) openInfoOnMobile();
 };
 viewer.onHover = (id, x, y) => {

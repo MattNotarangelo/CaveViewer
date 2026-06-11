@@ -189,6 +189,11 @@ export function surveyColor(survey: string): RGB {
  * Multi-source Dijkstra: geodesic distance along centreline legs from the
  * nearest entrance. Falls back to fixed stations, then to station 0, if no
  * entrances are flagged. Splay shots are excluded from the graph.
+ *
+ * Stations at identical coordinates are treated as one graph node: Therion
+ * .lox writes an equated station once per survey (different ids and names,
+ * same point, no joining shot), so without this the distance flood stops at
+ * every survey boundary and most of a .lox model colours grey.
  */
 export function entranceDistances(model: CaveModel): {
   distance: Float64Array;
@@ -198,22 +203,36 @@ export function entranceDistances(model: CaveModel): {
   const distance = new Float64Array(n).fill(Infinity);
   if (n === 0) return { distance, max: 0 };
 
-  // Build adjacency from non-splay legs.
+  // Canonicalize coordinate-coincident stations to one node (0.1 mm key).
+  const canon = new Map<string, number>();
+  const node = new Int32Array(n);
+  for (const s of model.stations) {
+    const key = `${s.x.toFixed(4)},${s.y.toFixed(4)},${s.z.toFixed(4)}`;
+    const existing = canon.get(key);
+    if (existing === undefined) {
+      canon.set(key, s.id);
+      node[s.id] = s.id;
+    } else {
+      node[s.id] = existing;
+    }
+  }
+
+  // Build adjacency from non-splay legs, over canonical nodes.
   const adj: Array<Array<{ to: number; w: number }>> = Array.from({ length: n }, () => []);
   for (const leg of model.legs) {
     if (leg.flags.splay) continue;
     const a = model.stations[leg.from];
     const b = model.stations[leg.to];
     const w = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
-    adj[leg.from].push({ to: leg.to, w });
-    adj[leg.to].push({ to: leg.from, w });
+    adj[node[leg.from]].push({ to: node[leg.to], w });
+    adj[node[leg.to]].push({ to: node[leg.from], w });
   }
 
   const sources = chooseSources(model);
   const heap = new MinHeap();
   for (const s of sources) {
-    distance[s] = 0;
-    heap.push(s, 0);
+    distance[node[s]] = 0;
+    heap.push(node[s], 0);
   }
 
   let max = 0;
@@ -229,6 +248,9 @@ export function entranceDistances(model: CaveModel): {
       }
     }
   }
+
+  // Coincident stations share their canonical node's distance.
+  for (let i = 0; i < n; i++) distance[i] = distance[node[i]];
   return { distance, max };
 }
 
