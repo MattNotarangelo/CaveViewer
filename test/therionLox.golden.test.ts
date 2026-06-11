@@ -46,6 +46,14 @@ describe("Therion .lox — cross-format golden test vs the same cave's .3d", () 
   it("decodes the same coordinates (identical bounds) as the trusted .3d parser", () => {
     expect(stationBounds(lox)).toEqual(stationBounds(threeD));
   });
+
+  it('keeps stations whose given name merely ends in "." (e.g. "9.") named', () => {
+    // "S1.9." is a real named station in this dataset — the .3d agrees — and
+    // must not be confused with Therion's "." anonymous-point convention.
+    const odd = lox.stations.find((s) => s.label === "ResurgenceDeLAvenir.S1.9.");
+    expect(odd).toBeDefined();
+    expect(odd!.flags.anonymous).toBe(false);
+  });
 });
 
 // --- Minimal hand-built .lox (little-endian), field order per lxFile.cxx Load() ---
@@ -80,7 +88,9 @@ function buildSyntheticLox(): ArrayBuffer {
   // STATION: id, surveyId, namePtr{pos,size}, commentPtr{pos,size}, flags, x,y,z; data="ab"
   const stA = [...u32(0), ...u32(0), ...u32(0), ...u32(1), ...u32(0), ...u32(0), ...u32(2), ...f64(0), ...f64(0), ...f64(0)];
   const stB = [...u32(1), ...u32(0), ...u32(1), ...u32(1), ...u32(0), ...u32(0), ...u32(16), ...f64(10), ...f64(0), ...f64(-2)];
-  const station = chunk(2, [...stA, ...stB], 2, ascii("ab"));
+  // stC is named "." — Therion's anonymous splay/wall-point convention.
+  const stC = [...u32(2), ...u32(0), ...u32(2), ...u32(1), ...u32(0), ...u32(0), ...u32(0), ...f64(1), ...f64(1), ...f64(1)];
+  const station = chunk(2, [...stA, ...stB, ...stC], 3, ascii("ab."));
   // SHOT: from,to, fLRUD[4], tLRUD[4], flags, sectionType, surveyId, threshold
   const shot = chunk(
     3,
@@ -105,11 +115,17 @@ describe("Therion .lox — synthetic: walls, flags, labels", () => {
 
   it("builds survey-path labels and station flags", () => {
     expect(m.metadata.title).toBe("Test Cave");
-    expect(m.stations.map((s) => s.label).sort()).toEqual(["cave.a", "cave.b"]);
+    expect(m.stations.map((s) => s.label).sort()).toEqual(["", "cave.a", "cave.b"]);
     const byLabel = new Map(m.stations.map((s) => [s.label, s]));
     expect(byLabel.get("cave.a")!.flags.entrance).toBe(true);
     expect(byLabel.get("cave.b")!.flags.wall).toBe(true);
     expect(byLabel.get("cave.b")).toMatchObject({ x: 10, y: 0, z: -2 });
+  });
+
+  it('marks the station named "." anonymous and unlabelled', () => {
+    const anon = m.stations.filter((s) => s.flags.anonymous);
+    expect(anon).toHaveLength(1);
+    expect(anon[0]).toMatchObject({ label: "", x: 1, y: 1, z: 1 });
   });
 
   it("decodes the centreline leg", () => {
