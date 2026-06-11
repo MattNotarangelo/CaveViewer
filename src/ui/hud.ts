@@ -36,8 +36,8 @@ export class Hud {
     this.model = null;
     this.body.innerHTML = `
       <p class="hud-hint">Drag &amp; drop a Survex <code>.3d</code>, Compass
-      <code>.plt</code> or Therion <code>.lox</code> file anywhere, or use the
-      buttons below.</p>`;
+      <code>.plt</code>, Therion <code>.lox</code> or PocketTopo <code>.top</code>
+      file anywhere, or use the buttons below.</p>`;
   }
 
   showError(message: string): void {

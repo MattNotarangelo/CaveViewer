@@ -18,6 +18,7 @@ feature, not a limitation. The app deploys as a pure static site.
 | **2** | **Compass `.plt`** (processed coordinates, LRUD, splays, multi-survey) | ✅ done |
 | **3** | **Therion `.lox`** + lit triangle-mesh passage walls (the modelled scrap surfaces); **LRUD passage tubes** reconstructed for `.3d`/`.plt` | ✅ done |
 | **4** | **Interaction & UX**: ViewCube navigation (drag to orbit, click a face to snap); click a station for its details; hover labels + station finder; **measure tool** (straight-line / horizontal / vertical / bearing); **survey-tree show/hide**; **vertical exaggeration**; entrance & fixed-point markers; light/dark theme; metric/imperial units; render-on-demand (idle GPU) | ✅ done |
+| **5** | **PocketTopo `.top`** (raw DistoX shots: declination, repeated-shot averaging, splays, reference anchoring, trip dates) | ✅ done |
 | next | Colour by date; cross-sections from splays; clipping plane / depth cursor; depth fog | planned |
 
 ## Architecture
@@ -33,6 +34,7 @@ src/
     survex3d.ts    # Survex .3d v8 parser
     compassPlt.ts  # Compass .plt parser
     therionLox.ts  # Therion .lox parser (centreline + scrap wall meshes)
+    pocketTopoTop.ts # PocketTopo .top parser (raw shots → coordinates)
     caveStats.ts   # Derived stats (total length, depth range, ...)
     index.ts       # parseCaveFile(filename, buffer) dispatcher + exports
   viewer/          # Three.js. Consumes a CaveModel; knows nothing about files.
@@ -84,6 +86,7 @@ The parser stays axis-faithful; all axis remapping for rendering lives in
 | Survex `.3d` (v8) | binary | [Official 3d format spec](https://survex.com/docs/3dformat.htm); cross-checked against Survex's reference reader [`src/img.c`](https://github.com/ojwb/survex/blob/master/src/img.c) (`img_read_item_new`, `read_v8label`) |
 | Compass `.plt` | text | Cross-checked against Survex's reference Compass reader [`src/img.c`](https://github.com/ojwb/survex/blob/master/src/img.c); coordinates are North/East/Up in feet → metres |
 | Therion `.lox` | binary | Reverse-engineered from Therion's reference reader [`src/common-utils/lxFile.{h,cxx}`](https://github.com/therion/therion/blob/master/src/common-utils/lxFile.cxx) (chunked format; record fields follow each struct's `Load()`, not the `.h` declaration order) |
+| PocketTopo `.top` (v3) | binary | Cross-checked against TopoDroid's [`ptopo`](https://github.com/marcocorvi/topodroid/tree/master/src/com/topodroid/ptopo) package, a port of Beat Heeb's reference implementation (incl. his 2026 station-id corrections); angles are 1/65536 of a circle, distances in mm |
 
 The `.3d` parser implements the v8 layout exactly — byte offsets are taken from
 the spec and the reference C reader, not guessed. Files older than v8 are rejected
@@ -93,6 +96,15 @@ splay/duplicate/surface shot flags, and multi-survey sections. The `.lox` parser
 reads the centreline plus the modelled passage-wall triangle meshes ("scraps"),
 which the viewer renders as a lit, translucent surface — `.lox` is validated by a
 cross-format test against the same cave's `.3d`.
+
+The `.top` parser is different in kind: PocketTopo files store **raw shot
+measurements** (distance / azimuth / inclination), not processed coordinates, so
+the parser also acts as a minimal processor — it applies each trip's magnetic
+declination, averages consecutive repeats of the same shot (the standard DistoX
+triple-shot practice), turns shots with an undefined target into splays, and
+propagates station positions breadth-first from reference points (or the origin).
+Survey loops are **not** adjusted: redundant legs keep the first position
+reached, so a loop's misclosure stays visible rather than being distributed.
 
 ## Develop, test, build
 
@@ -132,6 +144,10 @@ A plausible render is **not** proof the parser is correct; the numbers must matc
 - **Therion golden test** (`test/therionLox.golden.test.ts`): cross-checks the `.lox`
   parse of a real cave against the same cave's `.3d`, so the reverse-engineered
   binary layout is anchored to reference-tool output.
+- **PocketTopo round-trip** (`test/pocketTopo.encode.test.ts`): a from-spec encoder
+  builds synthetic `.top` files and the tests assert the *computed* geometry —
+  declination, repeated-shot averaging, splays, reference anchoring, trip dates,
+  plain-number vs `major.minor` station ids, and error handling.
 - **Pure-logic unit tests** cover the non-parser building blocks too — unit
   conversion/formatting (`test/units.test.ts`) and the survey-tree hierarchy +
   leg-visibility logic (`test/surveyTree.test.ts`).
@@ -192,7 +208,7 @@ with the compass directions.
 - **Fit to view**: the "Fit view" button or press <kbd>F</kbd>.
 - **Save PNG**: download the current view as an image.
 - **Units**: toggle metric ⇄ imperial. **Theme**: toggle dark ⇄ light. (Both remembered.)
-- **Open a file**: drag-and-drop a `.3d` / `.plt` / `.lox` anywhere, or use "Open file…".
+- **Open a file**: drag-and-drop a `.3d` / `.plt` / `.lox` / `.top` anywhere, or use "Open file…".
 
 ## License
 

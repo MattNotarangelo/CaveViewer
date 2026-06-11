@@ -10,6 +10,7 @@ export * from "./types";
 export { parseSurvex3d, Survex3dParseError } from "./survex3d";
 export { parseCompassPlt, CompassPltParseError } from "./compassPlt";
 export { parseTherionLox, TherionLoxParseError } from "./therionLox";
+export { parsePocketTopo, PocketTopoParseError } from "./pocketTopoTop";
 export { caveStats } from "./caveStats";
 export type { CaveStats } from "./caveStats";
 
@@ -17,12 +18,13 @@ import { CaveModel } from "./types";
 import { parseSurvex3d } from "./survex3d";
 import { parseCompassPlt } from "./compassPlt";
 import { parseTherionLox } from "./therionLox";
+import { parsePocketTopo } from "./pocketTopoTop";
 
 export class UnsupportedFormatError extends Error {
   constructor(readonly extension: string) {
     super(
       `Unsupported file type "${extension}". ` +
-        `Supported: .3d (Survex), .plt (Compass), .lox (Therion).`,
+        `Supported: .3d (Survex), .plt (Compass), .lox (Therion), .top (PocketTopo).`,
     );
     this.name = "UnsupportedFormatError";
   }
@@ -38,6 +40,8 @@ export function parseCaveFile(filename: string, buffer: ArrayBuffer): CaveModel 
       return parseCompassPlt(buffer);
     case "lox":
       return parseTherionLox(buffer);
+    case "top":
+      return parsePocketTopo(buffer);
     default:
       throw new UnsupportedFormatError(ext ? `.${ext}` : filename);
   }
