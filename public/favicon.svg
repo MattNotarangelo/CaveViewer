@@ -1,0 +1,11 @@
+<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cave Survey Viewer">
+  <rect width="48" height="48" rx="10" fill="#121a28"/>
+  <g fill="none" stroke="#33d6c0" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round">
+    <polygon points="24,3 42.19,13.5 42.19,34.5 24,45 5.81,34.5 5.81,13.5"/>
+    <path d="M5.81 13.5 L24 24 L42.19 13.5 M24 24 L24 45"/>
+  </g>
+  <path d="M14 31 L23.5 25.5 L34 30.5" fill="none" stroke="#ffb454" stroke-width="2.6"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="14" cy="31" r="2.6" fill="#eaf6f4"/>
+  <circle cx="34" cy="30.5" r="2.6" fill="#ffb454"/>
+</svg>
