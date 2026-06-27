@@ -30,7 +30,9 @@ export class Legend {
     this.el.innerHTML = `
       <div class="legend-title">${escapeHtml(spec.title)}</div>
       <div class="legend-body">
-        <div class="legend-bar" style="background:${gradientCss()}"></div>
+        <!-- background-image (not the background shorthand) so the stylesheet's
+             background-origin: border-box survives; the shorthand would reset it. -->
+        <div class="legend-bar" style="background-image:${gradientCss()}"></div>
         <div class="legend-labels">
           <span>${escapeHtml(spec.hi)}</span>
           <span>${escapeHtml(spec.mid)}</span>
