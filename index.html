@@ -12,6 +12,9 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://cloudflareinsights.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'"
     />
+    <!-- Set the saved theme on <html> before first paint so a reload doesn't flash
+         the default dark theme. Same-origin, so covered by script-src 'self'. -->
+    <script src="/theme-init.js"></script>
     <title>Cave Survey Viewer</title>
     <meta name="google-site-verification" content="yhJBw46UtDk7-YZn_gDqYoYJpHEHPOMHRE065-Nohf4" />
     <!-- Favicons: SVG first so capable browsers render a sharp, scalable icon;
